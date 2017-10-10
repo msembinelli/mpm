@@ -1,5 +1,6 @@
 import click
 import os
+import shutil
 from git import Repo, GitCommandError
 
 @click.group(chain=True)
@@ -32,7 +33,36 @@ def install(ctx, url, sha, path):
     except OSError as msg:
         print(msg)
 
+def onerror(func, path, exc_info):
+    """
+    Error handler for ``shutil.rmtree``.
 
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+
+    If the error is for another reason it re-raises the error.
+
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    """
+    import stat
+    if not os.access(path, os.W_OK):
+        # Is the error an access error ?
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise
+@cli.command(help='Uninstall a package or submodule.')
+@click.option('-p', '--path', default='./', help='Select the folder to uninstall the package or submodule from.')
+@click.pass_context
+def uninstall(ctx, path):
+    if os.path.exists(os.path.join(path, '.git')):
+        if click.prompt('''Type 'DELETE '''+ path +'''' to continue''') == 'DELETE ' + path:
+            shutil.rmtree(path, onerror=onerror)
+    else:
+        click.echo('Nothing to delete.')
+    if not os.listdir(os.path.join(path, '../')):
+        os.rmdir(os.path.join(path, '../'))
+        
 #@cli.command(help='Save the package or submodule reference to the mpm configuration file.')
 #@click.option('-f', '--file', default='package.yaml', type=click.File(mode='w'), help='Select the configuration YAML file to save the package or submodule reference to.')
 #@click.option('-p', '--product', default='default', help='Select the product you want to save the reference to, within a configuration file. The product can be used to manage different configuration versions or variations within one configuration file.')
