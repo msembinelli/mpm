@@ -26,8 +26,9 @@ def cli(ctx):
 
 @cli.command(help='Retrieve and install a package or submodule.')
 @click.option('-u', '--url', help='The upstream remote URL of the package or submodule.', required=True)
-@click.option('-s', '--sha', default='HEAD', help='The upstream remote SHA of the package or submodule you want to checkout.')
+@click.option('-r', '--ref', default='HEAD', help='The upstream remote SHA of the package or submodule you want to checkout.')
 @click.option('-p', '--path', default='./', help='Select the folder to install the package or submodule in.')
+#@click.option('-s', '--save', nargs=2, default={'file': package.yaml, 'product': 'default'}, help='Save the package or submodule reference to an mpm yaml configuration file.')
 @pass_db
 def install(db, url, sha, path):
     full_path = os.path.abspath(os.path.join(os.getcwd(), path)).strip('/')
@@ -43,7 +44,7 @@ def install(db, url, sha, path):
         module = Query()
         key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
         if not db.search(module.reference == key):
-            db.insert({'reference': key, 'data': {'url': url, 'sha': sha, 'path': full_path}})
+            db.insert({'reference_md5': key, 'data': {'url': url, 'sha': sha, 'path': full_path}})
     except GitCommandError as msg:
         print(msg)
     except OSError as msg:
@@ -75,13 +76,13 @@ def uninstall(db, path):
     if os.path.exists(full_path):
         module = Query()
         key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
-        if db.search(module.reference == key):
+        if db.search(module.reference_md5 == key):
             shutil.rmtree(full_path, onerror=onerror)
-            db.remove(module.reference == key)
+            db.remove(module.reference_md5 == key)
     else:
         click.echo('Nothing to delete.')
 
-#@cli.command(help='Save the package or submodule reference to the mpm configuration file.')
+#@cli.command(help='Save the currently installed packages or submodule references to the mpm configuration file.')
 #@click.option('-f', '--file', default='package.yaml', type=click.File(mode='w'), help='Select the configuration YAML file to save the package or submodule reference to.')
 #@click.option('-p', '--product', default='default', help='Select the product you want to save the reference to, within a configuration file. The product can be used to manage different configuration versions or variations within one configuration file.')
 #def save(dict, file, product):
