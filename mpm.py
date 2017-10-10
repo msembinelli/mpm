@@ -4,10 +4,16 @@ import shutil
 import sys
 import hashlib
 
+from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
 from git import Repo, GitCommandError
 
-pass_db = click.make_pass_decorator(TinyDB)
+class DBWrapper:
+    def __init__(self, filepath, storage):
+        self.filepath = filepath
+        self.storage = storage
+
+pass_db = click.make_pass_decorator(DBWrapper)
 
 @click.group(chain=True)
 @click.pass_context
@@ -17,12 +23,14 @@ def cli(ctx):
     To provide a simpler approach to including duplicate
     submodules in large projects.
     """
-    click.echo('mpm - A basic package manager for git submodules.')
-    click.echo(os.getcwd());
     db_path = os.path.join(os.getcwd(), '.mpm/')
     if not os.path.exists(db_path):
         os.mkdir(db_path)
-    ctx.obj = TinyDB(os.path.join(os.getcwd(), '.mpm/mpm-db.json'))
+    db_filepath = os.path.join(db_path, 'mpm-db.yml')
+    with open(db_filepath, 'a'):
+        with TinyDB(db_filepath, storage=YAMLStorage) as db:
+            pass
+    ctx.obj = DBWrapper(db_filepath, YAMLStorage)
 
 @cli.command(help='Retrieve and install a package or submodule.')
 @click.option('-u', '--url', help='The upstream remote URL of the package or submodule.', required=True)
@@ -30,7 +38,7 @@ def cli(ctx):
 @click.option('-p', '--path', default='./', help='Select the folder to install the package or submodule in.')
 #@click.option('-s', '--save', nargs=2, default={'file': package.yaml, 'product': 'default'}, help='Save the package or submodule reference to an mpm yaml configuration file.')
 @pass_db
-def install(db, url, sha, path):
+def install(db, url, ref, path):
     full_path = os.path.abspath(os.path.join(os.getcwd(), path)).strip('/')
     if not os.path.exists(os.path.join(full_path, '.git')):
         Repo.clone_from(url, full_path)
@@ -38,13 +46,15 @@ def install(db, url, sha, path):
     for remote in repo.remotes:
         remote.fetch()
     try:
-        commit_string = 'mpm-checkout-' + sha
-        branch = repo.create_head(commit_string, sha)
+        commit_string = 'mpm-checkout-' + ref
+        branch = repo.create_head(commit_string, ref)
         branch.checkout()
-        module = Query()
-        key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
-        if not db.search(module.reference == key):
-            db.insert({'reference_md5': key, 'data': {'url': url, 'sha': sha, 'path': full_path}})
+        with TinyDB(db.filepath, storage=db.storage) as db_obj:
+            module = Query()
+            key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
+            if not db_obj.search(module.reference == key):
+                db_obj.insert({'reference_md5': key, 'data': {'url': url, 'ref': ref, 'path': full_path}})
+                click.echo('Install Complete!')
     except GitCommandError as msg:
         print(msg)
     except OSError as msg:
@@ -74,11 +84,13 @@ def onerror(func, path, exc_info):
 def uninstall(db, path):
     full_path = os.path.abspath(os.path.join(os.getcwd(), path)).strip('/')
     if os.path.exists(full_path):
-        module = Query()
-        key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
-        if db.search(module.reference_md5 == key):
-            shutil.rmtree(full_path, onerror=onerror)
-            db.remove(module.reference_md5 == key)
+        with TinyDB(db.filepath, storage=db.storage) as db_obj:
+            module = Query()
+            key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
+            if db_obj.search(module.reference_md5 == key):
+                shutil.rmtree(full_path, onerror=onerror)
+                db_obj.remove(module.reference_md5 == key)
+                click.echo('Uninstall Complete!')
     else:
         click.echo('Nothing to delete.')
 

@@ -6,7 +6,9 @@ setup(
     py_modules=['mpm'],
     install_requires=[
         'click',
-        'gitpython'
+        'gitpython',
+        'pyyaml',
+        'tinydb',
     ],
     entry_points='''
         [console_scripts]
