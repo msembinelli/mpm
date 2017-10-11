@@ -99,4 +99,7 @@ def mpm_freeze(db, yaml_file, product):
     pass
 
 def mpm_show(db):
-    pass
+    click.echo('\n   MODULES INSTALLED\n')
+    with TinyDB(db.filepath, storage=db.storage) as db_obj:
+        for entry in db_obj.all():
+            click.echo('   {:<30}  {:<40}  {:<40}  {:<40}'.format(entry['name'], entry['remote_url'], entry['reference'], entry['path']))

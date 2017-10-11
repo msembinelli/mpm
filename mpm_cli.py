@@ -1,6 +1,6 @@
 import click
 
-from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_freeze
+from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_freeze, mpm_show
 
 pass_db = click.make_pass_decorator(DBWrapper)
 
