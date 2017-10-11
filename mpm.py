@@ -1,7 +1,6 @@
 import os
 import shutil
 import sys
-import hashlib
 import click
 
 from yaml_storage import YAMLStorage
@@ -23,48 +22,59 @@ def mpm_init(ctx):
     if not os.path.exists(db_path):
         os.mkdir(db_path)
     db_filepath = os.path.join(db_path, 'mpm-db.yml')
-    with open(db_filepath, 'a'):
-        with TinyDB(db_filepath, storage=YAMLStorage) as db:
+    if not os.path.isfile(db_filepath):
+        with open(db_filepath, 'a'):
             pass
     ctx.obj = DBWrapper(db_filepath, YAMLStorage)
 
-def mpm_install(db, url, ref, path):
-    repo_name = os.path.basename(url).split('.git')[0]
-    full_path = os.path.abspath(os.path.join(os.getcwd(), os.path.join(path, repo_name))).strip('/')
+def mpm_install(db, remote_url, reference, directory, name, update, save):
+    if not name:
+        repo_name = os.path.basename(remote_url).split('.git')[0]
+    else:
+        repo_name = name
+
+    click.echo('Installing ' + repo_name + ' ...')
+
+    full_path = os.path.abspath(os.path.join(os.getcwd(), os.path.join(directory, repo_name))).strip('/')
     if not os.path.exists(os.path.join(full_path, '.git')):
-        Repo.clone_from(url, full_path)
+        Repo.clone_from(remote_url, full_path)
     repo = Repo(full_path)
     for remote in repo.remotes:
         remote.fetch()
     try:
-        commit_string = 'mpm-checkout-' + ref
-        branch = repo.create_head(commit_string, ref)
+        commit_string = 'mpm-' + reference
+        branch = repo.create_head(commit_string, reference)
         branch.checkout()
+
+        db_entry = {'name': repo_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
         with TinyDB(db.filepath, storage=db.storage) as db_obj:
             module = Query()
-            key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
-            if db_obj.search(module.reference_md5 == key):
-                click.echo('Already Installed!')
+            if db_obj.search(module.name == repo_name):
+                if update:
+                    db_obj.update({'reference': reference}, module.name == repo_name)
+                    click.echo('Reference Updated!')
+                else:
+                    click.echo('Already Installed! If you wish to update the branch/reference, use the -u option.')
             else:
-                db_obj.insert({'reference_md5': key, 'data': {'name': repo_name, 'url': url, 'ref': ref, 'path': full_path}})
+                db_obj.insert(db_entry)
                 click.echo('Install Complete!')
     except GitCommandError as msg:
         print(msg)
     except OSError as msg:
         print(msg)
 
-def mpm_uninstall(db, path):
-    full_path = os.path.abspath(os.path.join(os.getcwd(), path)).strip('/')
-    if os.path.exists(full_path):
-        with TinyDB(db.filepath, storage=db.storage) as db_obj:
-            module = Query()
-            key = str(hashlib.md5(full_path.encode('utf-8')).hexdigest())
-            if db_obj.search(module.reference_md5 == key):
-                shutil.rmtree(full_path, onerror=onerror_helper)
-                db_obj.remove(module.reference_md5 == key)
-                click.echo('Uninstall Complete!')
-    else:
-        click.echo('Nothing to delete.')
+def mpm_uninstall(db, module_name):
+    click.echo('Uninstalling ' + module_name + ' ...')
+    with TinyDB(db.filepath, storage=db.storage) as db_obj:
+        module = Query()
+        [db_entry] = db_obj.search(module.name == module_name)
+        full_path = db_entry['path'].replace('/', os.path.sep)
+        if db_entry and os.path.exists(full_path):
+            shutil.rmtree(full_path, onerror=onerror_helper)
+            db_obj.remove(module.name == module_name)
+            click.echo('Uninstall Complete!')
+        else:
+            click.echo('Nothing to delete or module not found.')
 
 def onerror_helper(func, path, exc_info):
     """
@@ -85,7 +95,7 @@ def onerror_helper(func, path, exc_info):
     else:
         raise
 
-def mpm_freeze(db, file, product):
+def mpm_freeze(db, yaml_file, product):
     pass
 
 def mpm_show(db):
