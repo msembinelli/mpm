@@ -1,6 +1,6 @@
 import click
 
-from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_load, mpm_freeze, mpm_show
+from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_load, mpm_freeze, mpm_purge, mpm_show
 
 pass_db = click.make_pass_decorator(DBWrapper)
 
@@ -38,6 +38,11 @@ def load(db, filename, product):
 @pass_db
 def freeze(db, filename, product):
     mpm_freeze(db, filename, product)
+
+@cli.command(help='Uninstall all the modules.')
+@pass_db
+def purge(db):
+    mpm_purge(db)
 
 @cli.command(help='Print out the currently installed modules.')
 @pass_db

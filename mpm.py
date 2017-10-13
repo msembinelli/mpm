@@ -116,6 +116,12 @@ def mpm_freeze(db, filename, product):
                     save_db.table(product).insert(item)
     click.echo('Save complete!')
 
+def mpm_purge(db):
+    click.echo('Purging modules...')
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
+        for item in db_obj.all():
+            mpm_uninstall(db, item['name'])
+    click.echo('Purging complete!')
 
 def mpm_show(db):
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
