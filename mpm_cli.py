@@ -1,6 +1,6 @@
 import click
 
-from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_load, mpm_freeze, mpm_purge, mpm_show
+from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_show
 
 pass_db = click.make_pass_decorator(DBWrapper)
 
@@ -14,16 +14,22 @@ def cli(ctx):
 @click.option('-r', '--reference', default='remotes/origin/master', help='The upstream remote SHA of the module you want to checkout.')
 @click.option('-d', '--directory', default='modules', help='Select the folder to install the module in.')
 @click.option('-n', '--name', default=None, help='Customize the folder name of the module. Useful in the event of name collisions. If no name is included, the name will be extracted from the remote URL.')
-@click.option('-u', '--update', is_flag=True, help='Update the reference of an existing module.')
 @pass_db
-def install(db, remote_url, reference, directory, name, update):
-    mpm_install(db, remote_url, reference, directory, name, update)
+def install(db, remote_url, reference, directory, name):
+    mpm_install(db, remote_url, reference, directory, name)
 
 @cli.command(help='Uninstall a module.')
 @click.argument('module_name', required=True)
 @pass_db
 def uninstall(db, module_name):
     mpm_uninstall(db, module_name)
+
+@cli.command(help='Update a modules reference.')
+@click.argument('module_name', required=True)
+@click.argument('reference', required=True)
+@pass_db
+def update(db, module_name, reference):
+    mpm_update(db, module_name, reference)
 
 @cli.command(help='Load and install modules from a yaml file.')
 @click.argument('filename', default='package.yaml')

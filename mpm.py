@@ -28,7 +28,22 @@ def mpm_init(ctx):
             pass
     ctx.obj = DBWrapper(db_filepath, YAMLStorage, 'mpm')
 
-def mpm_install(db, remote_url, reference, directory, name, update):
+def checkout_helper(remote_url, path, reference):
+    if not os.path.exists(os.path.join(path, '.git')):
+        Repo.clone_from(remote_url, path)
+    repo = Repo(path)
+    for remote in repo.remotes:
+        remote.fetch()
+    try:
+        commit_string = 'mpm-' + reference
+        branch = repo.create_head(commit_string, reference)
+        branch.checkout()
+    except GitCommandError as msg:
+        print(msg)
+    except OSError as msg:
+        print(msg)
+
+def mpm_install(db, remote_url, reference, directory, name):
     if not name:
         repo_name = os.path.basename(remote_url).split('.git')[0]
     else:
@@ -37,31 +52,19 @@ def mpm_install(db, remote_url, reference, directory, name, update):
     click.echo('Installing ' + repo_name + ' ...')
 
     full_path = os.path.abspath(os.path.join(os.getcwd(), os.path.join(directory, repo_name))).strip('/')
-    if not os.path.exists(os.path.join(full_path, '.git')):
-        Repo.clone_from(remote_url, full_path)
-    repo = Repo(full_path)
-    for remote in repo.remotes:
-        remote.fetch()
-    try:
-        commit_string = 'mpm-' + reference
-        branch = repo.create_head(commit_string, reference)
-        branch.checkout()
-        db_entry = {'name': repo_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
-        with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
-            module = Query()
-            if db_obj.search(module.name == repo_name) and db_obj.all():
-                if update:
-                    db_obj.update({'reference': reference}, module.name == repo_name)
-                    click.echo('Reference Updated!')
-                else:
-                    click.echo('Already Installed! If you wish to update the branch/reference, use the -u option.')
+    checkout_helper(remote_url, full_path, reference)
+    db_entry = {'name': repo_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
+        module = Query()
+        if db_obj.search(module.name == repo_name) and db_obj.all():
+            if update:
+                db_obj.update({'reference': reference}, module.name == repo_name)
+                click.echo('Reference Updated!')
             else:
-                db_obj.insert(db_entry)
-                click.echo('Install complete!')
-    except GitCommandError as msg:
-        print(msg)
-    except OSError as msg:
-        print(msg)
+                click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
+        else:
+            db_obj.insert(db_entry)
+            click.echo('Install complete!')
 
 def mpm_uninstall(db, module_name):
     click.echo('Uninstalling ' + module_name + ' ...')
@@ -75,6 +78,17 @@ def mpm_uninstall(db, module_name):
             click.echo('Uninstall complete!')
         else:
             click.echo('Nothing to delete or module not found.')
+
+
+def mpm_update(db, module_name, reference):
+    click.echo('Updating ' + module_name + ' ...')
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
+        module = Query()
+        [item] = db_obj.search(module.name == module_name)
+        if item:
+            db_obj.update({'reference': reference}, module.name == module_name)
+            checkout_helper(item['remote_url'], item['path'], reference)
+            click.echo('Reference Updated!')
 
 def onerror_helper(func, path, exc_info):
     """
