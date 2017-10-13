@@ -8,6 +8,11 @@ def represent_doc(dumper, data):
     # which PyYAML understands
     return dumper.represent_data(dict(data))
 
+def represent_uni(dumper, uni):
+    node = yaml.ScalarNode(tag=u'tag:yaml.org,2002:str', value=uni)
+    return node
+
+yaml.add_representer(unicode, represent_uni)
 yaml.add_representer(Document, represent_doc)
 
 class YAMLStorage(Storage):
