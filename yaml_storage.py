@@ -1,22 +1,28 @@
 import yaml
 import sys
-from tinydb.storages import Storage
+from tinydb.database import Document
+from tinydb.storages import Storage, touch
+
+def represent_doc(dumper, data):
+    # Represent `Document` objects as their dict's string representation
+    # which PyYAML understands
+    return dumper.represent_data(dict(data))
+
+yaml.add_representer(Document, represent_doc)
 
 class YAMLStorage(Storage):
-    def __init__(self, filename):  # (1)
+    def __init__(self, filename):
         self.filename = filename
+        touch(filename, False)
 
     def read(self):
         with open(self.filename) as handle:
-            try:
-                data = yaml.safe_load(handle.read())  # (2)
-                return data
-            except yaml.YAMLError:
-                return None  # (3)
+            data = yaml.safe_load(handle.read())
+            return data
 
     def write(self, data):
         with open(self.filename, 'w') as handle:
-            yaml.dump(yaml.safe_load(str(data)), handle)
+            yaml.dump(data, handle)
 
-    def close(self):  # (4)
+    def close(self):
         pass
