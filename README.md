@@ -1,5 +1,5 @@
 # MPM
-A basic package manager for git written in python. To provide a simpler approach to including nested submodules in large projects.
+A basic package manager for git written in python 2.7. To provide a simpler approach to including nested submodules in large projects.
 
 ## REQUIREMENTS
 
