@@ -8,9 +8,10 @@ from tinydb import TinyDB, Query
 from git import Repo, GitCommandError
 
 class DBWrapper:
-    def __init__(self, filepath, storage):
+    def __init__(self, filepath, storage, table_name):
         self.filepath = filepath
         self.storage = storage
+        self.table_name = table_name
 
 def mpm_init(ctx):
     """
@@ -25,9 +26,9 @@ def mpm_init(ctx):
     if not os.path.isfile(db_filepath):
         with open(db_filepath, 'a'):
             pass
-    ctx.obj = DBWrapper(db_filepath, YAMLStorage)
+    ctx.obj = DBWrapper(db_filepath, YAMLStorage, 'mpm')
 
-def mpm_install(db, remote_url, reference, directory, name, update, save):
+def mpm_install(db, remote_url, reference, directory, name, update):
     if not name:
         repo_name = os.path.basename(remote_url).split('.git')[0]
     else:
@@ -45,11 +46,10 @@ def mpm_install(db, remote_url, reference, directory, name, update, save):
         commit_string = 'mpm-' + reference
         branch = repo.create_head(commit_string, reference)
         branch.checkout()
-
         db_entry = {'name': repo_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
-        with TinyDB(db.filepath, storage=db.storage) as db_obj:
+        with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
             module = Query()
-            if db_obj.search(module.name == repo_name):
+            if db_obj.search(module.name == repo_name) and db_obj.all():
                 if update:
                     db_obj.update({'reference': reference}, module.name == repo_name)
                     click.echo('Reference Updated!')
@@ -57,7 +57,7 @@ def mpm_install(db, remote_url, reference, directory, name, update, save):
                     click.echo('Already Installed! If you wish to update the branch/reference, use the -u option.')
             else:
                 db_obj.insert(db_entry)
-                click.echo('Install Complete!')
+                click.echo('Install complete!')
     except GitCommandError as msg:
         print(msg)
     except OSError as msg:
@@ -65,14 +65,14 @@ def mpm_install(db, remote_url, reference, directory, name, update, save):
 
 def mpm_uninstall(db, module_name):
     click.echo('Uninstalling ' + module_name + ' ...')
-    with TinyDB(db.filepath, storage=db.storage) as db_obj:
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
         module = Query()
         [db_entry] = db_obj.search(module.name == module_name)
         full_path = db_entry['path'].replace('/', os.path.sep)
         if db_entry and os.path.exists(full_path):
             shutil.rmtree(full_path, onerror=onerror_helper)
             db_obj.remove(module.name == module_name)
-            click.echo('Uninstall Complete!')
+            click.echo('Uninstall complete!')
         else:
             click.echo('Nothing to delete or module not found.')
 
@@ -95,11 +95,30 @@ def onerror_helper(func, path, exc_info):
     else:
         raise
 
-def mpm_freeze(db, yaml_file, product):
-    pass
+def mpm_load(db, filename, product):
+    click.echo('Loading modules from file... ' + filename)
+    with TinyDB(filename, storage=db.storage, default_table=product) as load_db:
+        for item in load_db.all():
+            name = item['name']
+            directory = item['path'].replace('/', os.path.sep).split(os.path.sep)[-2]
+            mpm_install(db, item['remote_url'], item['reference'], directory, name, True )
+    click.echo('Load complete!')
+
+def mpm_freeze(db, filename, product):
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
+        if not os.path.isfile(filename):
+            with open(filename, 'a'):
+                pass
+        click.echo('Saving modules to file... ' + filename)
+        with TinyDB(filename, storage=db.storage, default_table=product) as save_db:
+            for item in db_obj.all():
+                if item not in save_db.table(product):
+                    save_db.table(product).insert(item)
+    click.echo('Save complete!')
+
 
 def mpm_show(db):
-    with TinyDB(db.filepath, storage=db.storage) as db_obj:
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
         if db_obj.all():
             click.echo('\nmodules installed')
         else:

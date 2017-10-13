@@ -1,6 +1,6 @@
 import click
 
-from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_freeze, mpm_show
+from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_load, mpm_freeze, mpm_show
 
 pass_db = click.make_pass_decorator(DBWrapper)
 
@@ -15,10 +15,9 @@ def cli(ctx):
 @click.option('-d', '--directory', default='modules', help='Select the folder to install the module in.')
 @click.option('-n', '--name', default=None, help='Customize the folder name of the module. Useful in the event of name collisions. If no name is included, the name will be extracted from the remote URL.')
 @click.option('-u', '--update', is_flag=True, help='Update the reference of an existing module.')
-@click.option('-s', '--save', nargs=2, default={'file': 'package.yaml', 'product': 'default'}, help='Save the package or submodule reference to an mpm yaml configuration file.')
 @pass_db
-def install(db, remote_url, reference, directory, name, update, save):
-    mpm_install(db, remote_url, reference, directory, name, update, save)
+def install(db, remote_url, reference, directory, name, update):
+    mpm_install(db, remote_url, reference, directory, name, update)
 
 @cli.command(help='Uninstall a module.')
 @click.argument('module_name', required=True)
@@ -26,12 +25,19 @@ def install(db, remote_url, reference, directory, name, update, save):
 def uninstall(db, module_name):
     mpm_uninstall(db, module_name)
 
-@cli.command(help='Save installed modules to a yml file.')
-@click.argument('yaml_file', required=True, type=click.File(mode='w'))
-@click.option('-prd', '--product', default='default', help='Select the product you want to save the reference to, within a configuration file. The product can be used to manage different configuration versions or variations within one configuration file.')
+@cli.command(help='Load and install modules from a yaml file.')
+@click.argument('filename', default='package.yaml')
+@click.option('-p', '--product', default='_default')
 @pass_db
-def freeze(db, yaml_file, product):
-    mpm_freeze(db, yaml_file, product)
+def load(db, filename, product):
+    mpm_load(db, filename, product)
+
+@cli.command(help='Save installed modules to a yaml file.')
+@click.argument('filename', default='package.yaml')
+@click.option('-p', '--product', default='_default')
+@pass_db
+def freeze(db, filename, product):
+    mpm_freeze(db, filename, product)
 
 @cli.command(help='Print out the currently installed modules.')
 @pass_db
