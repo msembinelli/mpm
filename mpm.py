@@ -51,17 +51,13 @@ def mpm_install(db, remote_url, reference, directory, name):
 
     click.echo('Installing ' + repo_name + ' ...')
 
-    full_path = os.path.abspath(os.path.join(os.getcwd(), os.path.join(directory, repo_name))).strip('/')
+    full_path = os.path.join(directory, repo_name).strip('/')
     checkout_helper(remote_url, full_path, reference)
     db_entry = {'name': repo_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
         module = Query()
         if db_obj.search(module.name == repo_name) and db_obj.all():
-            if update:
-                db_obj.update({'reference': reference}, module.name == repo_name)
-                click.echo('Reference Updated!')
-            else:
-                click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
+            click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
         else:
             db_obj.insert(db_entry)
             click.echo('Install complete!')
