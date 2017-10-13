@@ -111,7 +111,7 @@ def mpm_load(db, filename, product):
         for item in load_db.all():
             name = item['name']
             directory = item['path'].replace('/', os.path.sep).split(os.path.sep)[-2]
-            mpm_install(db, item['remote_url'], item['reference'], directory, name, True )
+            mpm_install(db, item['remote_url'], item['reference'], directory, name)
     click.echo('Load complete!')
 
 def mpm_freeze(db, filename, product):
