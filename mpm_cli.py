@@ -4,16 +4,16 @@ from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_update, mpm
 
 pass_db = click.make_pass_decorator(DBWrapper)
 
-@click.group(chain=True)
+@click.group()
 @click.pass_context
 def cli(ctx):
     mpm_init(ctx)
 
 @cli.command(help='Retrieve and install a module.')
 @click.argument('remote_url', required=True)
-@click.option('-r', '--reference', default='remotes/origin/master', help='The upstream remote SHA of the module you want to checkout.')
-@click.option('-d', '--directory', default='modules', help='Select the folder to install the module in.')
-@click.option('-n', '--name', default=None, help='Customize the folder name of the module. Useful in the event of name collisions. If no name is included, the name will be extracted from the remote URL.')
+@click.option('-r', '--reference', show_default=True, default='remotes/origin/master', help='The upstream remote SHA of the module you want to checkout.')
+@click.option('-d', '--directory', show_default=True, default='modules', help='Select the folder to install the module in.')
+@click.option('-n', '--name', show_default=True, default=None, help='Customize the folder name of the module. Useful in the event of name collisions. If no name is included, the name will be extracted from the remote URL.')
 @pass_db
 def install(db, remote_url, reference, directory, name):
     mpm_install(db, remote_url, reference, directory, name)
@@ -32,20 +32,20 @@ def update(db, module_name, reference):
     mpm_update(db, module_name, reference)
 
 @cli.command(help='Load and install modules from a yaml file.')
-@click.argument('filename', default='package.yaml')
-@click.option('-p', '--product', default='_default')
+@click.argument('filename', default='package.yaml', required=True)
+@click.option('-p', '--product', show_default=True, default='_default')
 @pass_db
 def load(db, filename, product):
     mpm_load(db, filename, product)
 
 @cli.command(help='Save installed modules to a yaml file.')
-@click.argument('filename', default='package.yaml')
-@click.option('-p', '--product', default='_default')
+@click.argument('filename', default='package.yaml', required=True)
+@click.option('-p', '--product', show_default=True, default='_default')
 @pass_db
 def freeze(db, filename, product):
     mpm_freeze(db, filename, product)
 
-@cli.command(help='Uninstall all the modules.')
+@cli.command(help='Uninstall all modules.')
 @pass_db
 def purge(db):
     mpm_purge(db)

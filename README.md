@@ -19,3 +19,171 @@ MPM uses setuptools for ease of use on all platforms (Windows, Linux, OSX). To s
 Voila! Now MPM should be accessible on the command line simply by running:
 
     mpm --help
+
+## COMMANDS
+
+```
+Usage: mpm [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  --help  Show this message and exit.
+
+Commands:
+  freeze     Save installed modules to a yaml file.
+  install    Retrieve and install a module.
+  load       Load and install modules from a yaml file.
+  purge      Uninstall all modules.
+  show       Print out the currently installed modules.
+  uninstall  Uninstall a module.
+  update     Update a modules reference.
+
+
+Usage: mpm freeze [OPTIONS] FILENAME
+
+  Save installed modules to a yaml file.
+
+Options:
+  -p, --product TEXT  [default: _default]
+  --help              Show this message and exit.
+
+
+Usage: mpm install [OPTIONS] REMOTE_URL
+
+  Retrieve and install a module.
+
+Options:
+  -r, --reference TEXT  The upstream remote SHA of the module you want to
+                        checkout.  [default: remotes/origin/master]
+  -d, --directory TEXT  Select the folder to install the module in.
+                        [default: modules]
+  -n, --name TEXT       Customize the folder name of the module. Useful in
+                        the event of name collisions. If no name is included,
+                        the name will be extracted from the remote URL.
+  --help                Show this message and exit.
+
+
+Usage: mpm load [OPTIONS] FILENAME
+
+  Load and install modules from a yaml file.
+
+Options:
+  -p, --product TEXT  [default: _default]
+  --help              Show this message and exit.
+
+
+Usage: mpm purge [OPTIONS]
+
+  Uninstall all modules.
+
+Options:
+  --help  Show this message and exit.
+
+
+Usage: mpm show [OPTIONS]
+
+  Print out the currently installed modules.
+
+Options:
+  --help  Show this message and exit.
+
+
+Usage: mpm uninstall [OPTIONS] MODULE_NAME
+
+  Uninstall a module.
+
+Options:
+  --help  Show this message and exit.
+
+
+Usage: mpm update [OPTIONS] MODULE_NAME REFERENCE
+
+  Update a modules reference.
+
+Options:
+  --help  Show this message and exit.
+```
+
+## EXAMPLES
+
+Before you begin, it is recommended that you add `.mpm/` to your project's .gitignore. This folder contains the mpm working module database, but should not be checked in to your project. The `freeze` command saves a separate YAML file that can be checked in.
+
+### Installing a module
+
+We can install modules using the remote URL of the repo:
+
+    mpm install https://github.com/bitcoin/bitcoin.git -d my_modules -n BTC -r remotes/origin/master
+
+    mpm install git@github.com:reactjs/redux.git -r 6fdcc8c
+
+### Freezing a module set
+
+A working set of installed submodules can be saved to a YAML file, and that file can be checked in with your project:
+
+    mpm freeze package.dev.yaml
+
+The output yaml file:
+
+    ```
+    _default:
+      1:
+        name: BTC
+        path: my_modules/BTC
+        reference: remotes/origin/master
+        remote_url: https://github.com/bitcoin/bitcoin.git
+      2:
+        name: redux
+        path: modules/redux
+        reference: master
+        remote_url: git@github.com:reactjs/redux.git
+
+    ```
+
+Additionally, you can save a different configuration to the same YAML file using a different 'product' code. First, let us install an extra module for the second product.
+
+    mpm install https://github.com/pallets/click.git
+
+The new product configuration can be saved to the same YAML file with the `-p` option as so:
+
+    mpm freeze package.dev.yaml -p other_config
+
+Updated output:
+
+    ```
+    _default:
+      1:
+        name: BTC
+        path: my_modules/BTC
+        reference: remotes/origin/master
+        remote_url: https://github.com/bitcoin/bitcoin.git
+      2:
+        name: redux
+        path: modules/redux
+        reference: master
+        remote_url: git@github.com:reactjs/redux.git
+    other_config:
+      1:
+        name: BTC
+        path: my_modules/BTC
+        reference: remotes/origin/master
+        remote_url: https://github.com/bitcoin/bitcoin.git
+      2:
+        name: redux
+        path: modules/redux
+        reference: master
+        remote_url: git@github.com:reactjs/redux.git
+      3:
+        name: click
+        path: modules/click
+        reference: remotes/origin/master
+        remote_url: https://github.com/pallets/click.git
+    ```
+
+### Loading a module set
+
+A set of modules can be loaded and installed from a YAML file:
+
+    mpm load package.dev.yaml
+
+Or with a different product code:
+
+    mpm load package.dev.yaml -p other_config
