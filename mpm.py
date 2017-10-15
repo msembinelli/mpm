@@ -49,9 +49,10 @@ def onerror_helper(func, path, exc_info):
 
 def mpm_init(ctx):
     """
-    A basic package manager for git written in python.
-    To provide a simpler approach to including nested
-    submodules in large projects.
+    Initialize the mpm database. Called on every command
+    issued with mpm. If the file does not already exist,
+    create it. Save the database information in the DBWrapper
+    class, to be passed to the other commands.
     """
     db_path = os.path.join(os.getcwd(), '.mpm/')
     if not os.path.exists(db_path):
@@ -63,10 +64,20 @@ def mpm_init(ctx):
     ctx.obj = DBWrapper(db_filepath, YAMLStorage, 'mpm')
 
 def mpm_install(db, remote_url, reference, directory, name):
+    """
+    Install a module with GitPython using the reference,
+    remote_url, directory, and path parameters, then create
+    a database entry. If the module already exists in the
+    database and the filesystem, do nothing. If the module
+    exists in the database but not on the filesytem, reinstall
+    the module.
+    """
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         if not name:
+            # Use the default module name
             module_name = os.path.basename(remote_url).split('.git')[0]
         else:
+            # Use the user provided module name
             module_name = name
 
         module = Query()
@@ -86,6 +97,10 @@ def mpm_install(db, remote_url, reference, directory, name):
             click.echo('Install complete!')
 
 def mpm_uninstall(db, module_name):
+    """
+    Uninstall a module by name and remove the database entry.
+    If no module is found in the database, nothing is uninstalled.
+    """
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         module = Query()
         db_entry = mpm_db.get(module.name == module_name)
@@ -101,6 +116,10 @@ def mpm_uninstall(db, module_name):
 
 
 def mpm_update(db, module_name, reference):
+    """
+    Update a module's git reference and update the database entry.
+    If no module is found in the database, nothing is updated.
+    """
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         module = Query()
         item = mpm_db.get(module.name == module_name)
@@ -113,6 +132,13 @@ def mpm_update(db, module_name, reference):
             click.echo('Module not found!')
 
 def mpm_load(db, filename, product):
+    """
+    Installs a module set from a previously created yaml
+    file and updates the database. The product string specifies
+    which configuration to load within the yaml file, as multiple
+    products can be supported per file. If the product does not
+    exist in the file, nothing will be loaded.
+    """
     if os.path.exists(filename):
         with TinyDB(filename, storage=db.storage, default_table=product) as load_db:
             if load_db.all():
@@ -131,6 +157,13 @@ def mpm_load(db, filename, product):
         click.echo('File not found!')
 
 def mpm_freeze(db, filename, product):
+    """
+    Saves the current working module set in the database to an
+    output yaml file. The product string specifies which configuration
+    to save to within the yaml file, as multiple products can be
+    supported per file. If no modules are installed, nothing will be
+    frozen.
+    """
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         if not os.path.isfile(filename):
             with open(filename, 'a'):
@@ -149,6 +182,10 @@ def mpm_freeze(db, filename, product):
         click.echo('Freeze complete!')
 
 def mpm_purge(db):
+    """
+    Deletes all the currently installed modules from the database
+    and file system. If the database is empty, nothing will be purged.
+    """
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         if mpm_db.all():
             click.echo('Purging all modules...')
@@ -161,6 +198,9 @@ def mpm_purge(db):
         click.echo('Purging complete!')
 
 def mpm_show(db):
+    """
+    Displays all currently installed modules in the database.
+    """
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         if mpm_db.all():
             click.echo('\nmodules installed')

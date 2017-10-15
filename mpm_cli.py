@@ -4,7 +4,7 @@ from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_update, mpm
 
 pass_db = click.make_pass_decorator(DBWrapper)
 
-@click.group()
+@click.group(chain=True)
 @click.pass_context
 def cli(ctx):
     mpm_init(ctx)
