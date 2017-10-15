@@ -62,9 +62,18 @@ def mpm_init(ctx):
     if not os.path.exists(db_path):
         os.mkdir(db_path)
     db_filepath = os.path.join(db_path, 'mpm-db.yml')
-    if not os.path.isfile(db_filepath):
-        with open(db_filepath, 'a'):
-            pass
+    with open(db_filepath, 'a+'):
+        pass
+
+    create_gitignore_entry = False
+    with open('.gitignore', 'r') as gitignore:
+        if '.mpm/' not in gitignore.read():
+            create_gitignore_entry = True
+
+    if create_gitignore_entry:
+        with open('.gitignore', 'a+') as gitignore:
+            gitignore.write('.mpm/\n')
+
     ctx.obj = DBWrapper(db_filepath, YAMLStorage, 'mpm')
 
 def mpm_install(db, remote_url, reference, directory, name):
@@ -86,7 +95,7 @@ def mpm_install(db, remote_url, reference, directory, name):
 
         module = Query()
         db_entry = mpm_db.get(module.name == module_name)
-        full_path = os.path.join(directory, module_name).strip('/')
+        full_path = os.path.join(directory, module_name).strip(os.path.sep)
         new_db_entry = {'name': module_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
         if db_entry and os.path.exists(os.path.join(db_entry['path'].replace('/', os.path.sep), '.git')):
             click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
@@ -200,6 +209,39 @@ def mpm_purge(db):
             return
 
         click.echo('Purging complete!')
+
+def mpm_convert(db, filename, product, hard):
+    """
+    Gets existing git submodules from the repository, adds them to
+    the working database, then freezes to an output file. If the hard
+    option is used, mpm will use GitPython to remove all the submodules
+    from git in favour of managing them via mpm instead.
+    """
+    if os.path.isfile(os.path.join(os.getcwd(), '.gitmodules')):
+        submodules = Repo(os.getcwd()).submodules
+        if submodules:
+            click.echo('Converting all git submodules to mpm modules...')
+            modules = []
+            for submodule in submodules:
+                name = os.path.basename(submodule.name)
+                directory = submodule.path.split(name)[0].strip(os.path.sep)
+                remote_url = submodule.url
+                reference = str(submodule.module().head.commit)
+                mpm_install(db, remote_url, reference, directory, None)
+                if hard:
+                    with open('.gitignore', 'a+') as gitignore:
+                        gitignore.write(submodule.path + '/\n')
+                    # move the file so GitPython doesn't delete it from the filsystem
+                    os.rename(directory, 'mpm_tmp_mv' + directory)
+                    submodule.remove(configuration=True)
+                    os.rename('mpm_tmp_mv' + directory, directory)
+
+            mpm_freeze(db, filename, product)
+            click.echo('Convert complete!')
+        else:
+            click.echo('Nothing to convert!')
+    else:
+        click.echo('No .gitmodules exists!')
 
 def mpm_show(db):
     """

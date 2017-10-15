@@ -1,6 +1,6 @@
 import click
 
-from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_show
+from mpm import DBWrapper, mpm_init, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show
 
 pass_db = click.make_pass_decorator(DBWrapper)
 
@@ -33,14 +33,14 @@ def update(db, module_name, reference):
 
 @cli.command(help='Load and install modules from a yaml file.')
 @click.argument('filename', default='package.yaml', required=True)
-@click.option('-p', '--product', show_default=True, default='_default')
+@click.option('-p', '--product', show_default=True, default='_default', help='The configuration name to load the modules from.')
 @pass_db
 def load(db, filename, product):
     mpm_load(db, filename, product)
 
 @cli.command(help='Save installed modules to a yaml file.')
 @click.argument('filename', default='package.yaml', required=True)
-@click.option('-p', '--product', show_default=True, default='_default')
+@click.option('-p', '--product', show_default=True, default='_default', help='The configuration name to save the modules to.')
 @pass_db
 def freeze(db, filename, product):
     mpm_freeze(db, filename, product)
@@ -49,6 +49,14 @@ def freeze(db, filename, product):
 @pass_db
 def purge(db):
     mpm_purge(db)
+
+@cli.command(help='Gets existing git submodules from the repository, adds them to the working set, then freezes to an output file.')
+@click.argument('filename', default='package.yaml', required=True)
+@click.option('-p', '--product', show_default=True, default='_default', help='The configuration name to save the modules to.')
+@click.option('-h', '--hard', is_flag=True, help='Removes existing git submodules from the repository. Use this option if you are committing to use mpm to manage all the modules for your repo.')
+@pass_db
+def convert(db, filename, product, hard):
+    mpm_convert(db, filename, product, hard)
 
 @cli.command(help='Print out the currently installed modules.')
 @pass_db

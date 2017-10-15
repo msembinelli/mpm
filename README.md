@@ -107,7 +107,7 @@ Options:
 
 Before you begin, it is recommended that you add `.mpm/` to your project's .gitignore. This folder contains the mpm working module database, but should not be checked in to your project. The `freeze` command saves a separate YAML file that can be checked in.
 
-### Installing a module
+### Installing A Module
 
 We can install modules using the remote URL of the repo:
 
@@ -115,7 +115,7 @@ We can install modules using the remote URL of the repo:
 
     mpm install git@github.com:reactjs/redux.git -r 6fdcc8c
 
-### Freezing a module set
+### Freezing A Module Set
 
 A working set of installed submodules can be saved to a YAML file, and that file can be checked in with your project:
 
@@ -123,20 +123,20 @@ A working set of installed submodules can be saved to a YAML file, and that file
 
 The output yaml file:
 
-    ```
-    _default:
-      1:
-        name: BTC
-        path: my_modules/BTC
-        reference: remotes/origin/master
-        remote_url: https://github.com/bitcoin/bitcoin.git
-      2:
-        name: redux
-        path: modules/redux
-        reference: master
-        remote_url: git@github.com:reactjs/redux.git
+```
+_default:
+  1:
+    name: BTC
+    path: my_modules/BTC
+    reference: remotes/origin/master
+    remote_url: https://github.com/bitcoin/bitcoin.git
+  2:
+    name: redux
+    path: modules/redux
+    reference: master
+    remote_url: git@github.com:reactjs/redux.git
 
-    ```
+```
 
 Additionally, you can save a different configuration to the same YAML file using a different 'product' code. First, let us install an extra module for the second product.
 
@@ -148,37 +148,37 @@ The new product configuration can be saved to the same YAML file with the `-p` o
 
 Updated output:
 
-    ```
-    _default:
-      1:
-        name: BTC
-        path: my_modules/BTC
-        reference: remotes/origin/master
-        remote_url: https://github.com/bitcoin/bitcoin.git
-      2:
-        name: redux
-        path: modules/redux
-        reference: master
-        remote_url: git@github.com:reactjs/redux.git
-    other_config:
-      1:
-        name: BTC
-        path: my_modules/BTC
-        reference: remotes/origin/master
-        remote_url: https://github.com/bitcoin/bitcoin.git
-      2:
-        name: redux
-        path: modules/redux
-        reference: master
-        remote_url: git@github.com:reactjs/redux.git
-      3:
-        name: click
-        path: modules/click
-        reference: remotes/origin/master
-        remote_url: https://github.com/pallets/click.git
-    ```
+```
+_default:
+  1:
+    name: BTC
+    path: my_modules/BTC
+    reference: remotes/origin/master
+    remote_url: https://github.com/bitcoin/bitcoin.git
+  2:
+    name: redux
+    path: modules/redux
+    reference: master
+    remote_url: git@github.com:reactjs/redux.git
+other_config:
+  1:
+    name: BTC
+    path: my_modules/BTC
+    reference: remotes/origin/master
+    remote_url: https://github.com/bitcoin/bitcoin.git
+  2:
+    name: redux
+    path: modules/redux
+    reference: master
+    remote_url: git@github.com:reactjs/redux.git
+  3:
+    name: click
+    path: modules/click
+    reference: remotes/origin/master
+    remote_url: https://github.com/pallets/click.git
+```
 
-### Loading a module set
+### Loading A Module Set
 
 A set of modules can be loaded and installed from a YAML file:
 
@@ -187,3 +187,14 @@ A set of modules can be loaded and installed from a YAML file:
 Or with a different product code:
 
     mpm load package.dev.yaml -p other_config
+
+
+### Converting Existing Projects To MPM
+
+The `convert` command allows porting projects with existing git submodules over to the mpm method. `convert` is a composition of other commands, which will first get all your repository's submodules, issue `install` commands to enter them into the working module set, and finally issue a `freeze` command to write out the new yaml configuration file.
+
+    mpm convert package.yaml -p new_mpm_product
+
+The `-h` or `--hard` command line option provides the ability to remove a submodule from the git repository. Use this option if you are fully committing to using mpm in your project over traditional git submodules.
+
+    mpm convert package.yaml -p new_mpm_product --hard
