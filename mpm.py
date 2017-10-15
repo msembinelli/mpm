@@ -13,7 +13,14 @@ class DBWrapper:
         self.storage = storage
         self.table_name = table_name
 
-def checkout_helper(remote_url, path, reference):
+def checkout_helper(remote_url, reference, path):
+    """
+    Checkout helper used by the install and update commands.
+    Uses GitPython to clone and checkout a git repo from
+    a given URL and remote reference (SHA). Before checking out
+    a fetch is issued on all remote upstream branches to ensure
+    the latest changes are downloaded.
+    """
     if not os.path.exists(os.path.join(path, '.git')):
         Repo.clone_from(remote_url, path)
     repo = Repo(path)
@@ -31,12 +38,9 @@ def checkout_helper(remote_url, path, reference):
 def onerror_helper(func, path, exc_info):
     """
     Error handler for ``shutil.rmtree``.
-
     If the error is due to an access error (read only file)
     it attempts to add write permission and then retries.
-
     If the error is for another reason it re-raises the error.
-
     Usage : ``shutil.rmtree(path, onerror=onerror)``
     """
     import stat
@@ -88,11 +92,11 @@ def mpm_install(db, remote_url, reference, directory, name):
             click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
         elif db_entry and not os.path.exists(os.path.join(db_entry['path'].replace('/', os.path.sep), '.git')):
             click.echo('Folder missing, reinstalling ' + module_name + '...')
-            checkout_helper(remote_url, full_path, reference)
+            checkout_helper(remote_url, reference, full_path)
             mpm_db.update(new_db_entry, module.name == module_name)
         else:
             click.echo('Installing ' + module_name + '...')
-            checkout_helper(remote_url, full_path, reference)
+            checkout_helper(remote_url, reference, full_path)
             mpm_db.insert(new_db_entry)
             click.echo('Install complete!')
 
@@ -126,7 +130,7 @@ def mpm_update(db, module_name, reference):
         if item:
             click.echo('Updating ' + module_name + '...')
             mpm_db.update({'reference': reference}, module.name == module_name)
-            checkout_helper(item['remote_url'], item['path'], reference)
+            checkout_helper(item['remote_url'], reference, item['path'])
             click.echo('Module reference updated!')
         else:
             click.echo('Module not found!')
