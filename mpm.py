@@ -13,21 +13,6 @@ class DBWrapper:
         self.storage = storage
         self.table_name = table_name
 
-def mpm_init(ctx):
-    """
-    A basic package manager for git written in python.
-    To provide a simpler approach to including nested
-    submodules in large projects.
-    """
-    db_path = os.path.join(os.getcwd(), '.mpm/')
-    if not os.path.exists(db_path):
-        os.mkdir(db_path)
-    db_filepath = os.path.join(db_path, 'mpm-db.yml')
-    if not os.path.isfile(db_filepath):
-        with open(db_filepath, 'a'):
-            pass
-    ctx.obj = DBWrapper(db_filepath, YAMLStorage, 'mpm')
-
 def checkout_helper(remote_url, path, reference):
     if not os.path.exists(os.path.join(path, '.git')):
         Repo.clone_from(remote_url, path)
@@ -42,6 +27,40 @@ def checkout_helper(remote_url, path, reference):
         print(msg)
     except OSError as msg:
         print(msg)
+
+def onerror_helper(func, path, exc_info):
+    """
+    Error handler for ``shutil.rmtree``.
+
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+
+    If the error is for another reason it re-raises the error.
+
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    """
+    import stat
+    if not os.access(path, os.W_OK):
+        # Is the error an access error ?
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise
+
+def mpm_init(ctx):
+    """
+    A basic package manager for git written in python.
+    To provide a simpler approach to including nested
+    submodules in large projects.
+    """
+    db_path = os.path.join(os.getcwd(), '.mpm/')
+    if not os.path.exists(db_path):
+        os.mkdir(db_path)
+    db_filepath = os.path.join(db_path, 'mpm-db.yml')
+    if not os.path.isfile(db_filepath):
+        with open(db_filepath, 'a'):
+            pass
+    ctx.obj = DBWrapper(db_filepath, YAMLStorage, 'mpm')
 
 def mpm_install(db, remote_url, reference, directory, name):
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
@@ -93,40 +112,23 @@ def mpm_update(db, module_name, reference):
         else:
             click.echo('Module not found!')
 
-
-def onerror_helper(func, path, exc_info):
-    """
-    Error handler for ``shutil.rmtree``.
-
-    If the error is due to an access error (read only file)
-    it attempts to add write permission and then retries.
-
-    If the error is for another reason it re-raises the error.
-
-    Usage : ``shutil.rmtree(path, onerror=onerror)``
-    """
-    import stat
-    if not os.access(path, os.W_OK):
-        # Is the error an access error ?
-        os.chmod(path, stat.S_IWUSR)
-        func(path)
-    else:
-        raise
-
 def mpm_load(db, filename, product):
-    with TinyDB(filename, storage=db.storage, default_table=product) as load_db:
-        if load_db.all():
-            click.echo('Loading modules from file: ' + filename + '...')
-            for item in load_db.all():
-                name = item['name']
-                directory = item['path'].replace('/', os.path.sep).split(os.path.sep)[-2]
-                mpm_install(db, item['remote_url'], item['reference'], directory, name)
-        else:
-            load_db.purge_table(product)
-            click.echo('Nothing to load!')
-            return
+    if os.path.exists(filename):
+        with TinyDB(filename, storage=db.storage, default_table=product) as load_db:
+            if load_db.all():
+                click.echo('Loading modules from file: ' + filename + '...')
+                for item in load_db.all():
+                    name = item['name']
+                    directory = item['path'].replace('/', os.path.sep).split(os.path.sep)[-2]
+                    mpm_install(db, item['remote_url'], item['reference'], directory, name)
+            else:
+                load_db.purge_table(product)
+                click.echo('Nothing to load!')
+                return
 
-        click.echo('Load complete!')
+            click.echo('Load complete!')
+    else:
+        click.echo('File not found!')
 
 def mpm_freeze(db, filename, product):
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
