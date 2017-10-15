@@ -44,48 +44,55 @@ def checkout_helper(remote_url, path, reference):
         print(msg)
 
 def mpm_install(db, remote_url, reference, directory, name):
-    if not name:
-        repo_name = os.path.basename(remote_url).split('.git')[0]
-    else:
-        repo_name = name
-
-    click.echo('Installing ' + repo_name + ' ...')
-
-    full_path = os.path.join(directory, repo_name).strip('/')
-    checkout_helper(remote_url, full_path, reference)
-    db_entry = {'name': repo_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
-    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
-        module = Query()
-        if db_obj.search(module.name == repo_name) and db_obj.all():
-            click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
+        if not name:
+            module_name = os.path.basename(remote_url).split('.git')[0]
         else:
-            db_obj.insert(db_entry)
+            module_name = name
+
+        module = Query()
+        db_entry = mpm_db.get(module.name == module_name)
+        full_path = os.path.join(directory, module_name).strip('/')
+        new_db_entry = {'name': module_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
+        if db_entry and os.path.exists(os.path.join(db_entry['path'].replace('/', os.path.sep), '.git')):
+            click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
+        elif db_entry and not os.path.exists(os.path.join(db_entry['path'].replace('/', os.path.sep), '.git')):
+            click.echo('Folder missing, reinstalling ' + module_name + '...')
+            checkout_helper(remote_url, full_path, reference)
+            mpm_db.update(new_db_entry, module.name == module_name)
+        else:
+            click.echo('Installing ' + module_name + '...')
+            checkout_helper(remote_url, full_path, reference)
+            mpm_db.insert(new_db_entry)
             click.echo('Install complete!')
 
 def mpm_uninstall(db, module_name):
-    click.echo('Uninstalling ' + module_name + ' ...')
-    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         module = Query()
-        [db_entry] = db_obj.search(module.name == module_name)
-        full_path = db_entry['path'].replace('/', os.path.sep)
+        db_entry = mpm_db.get(module.name == module_name)
         if db_entry:
+            click.echo('Uninstalling ' + module_name + '...')
+            full_path = db_entry['path'].replace('/', os.path.sep)
             if os.path.exists(full_path):
                 shutil.rmtree(full_path, onerror=onerror_helper)
-            db_obj.remove(module.name == module_name)
+            mpm_db.remove(module.name == module_name)
             click.echo('Uninstall complete!')
         else:
-            click.echo('Nothing to delete or module not found.')
+            click.echo('Nothing to uninstall!')
 
 
 def mpm_update(db, module_name, reference):
-    click.echo('Updating ' + module_name + ' ...')
-    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         module = Query()
-        [item] = db_obj.search(module.name == module_name)
+        item = mpm_db.get(module.name == module_name)
         if item:
-            db_obj.update({'reference': reference}, module.name == module_name)
+            click.echo('Updating ' + module_name + '...')
+            mpm_db.update({'reference': reference}, module.name == module_name)
             checkout_helper(item['remote_url'], item['path'], reference)
-            click.echo('Reference Updated!')
+            click.echo('Module reference updated!')
+        else:
+            click.echo('Module not found!')
+
 
 def onerror_helper(func, path, exc_info):
     """
@@ -107,40 +114,58 @@ def onerror_helper(func, path, exc_info):
         raise
 
 def mpm_load(db, filename, product):
-    click.echo('Loading modules from file... ' + filename)
     with TinyDB(filename, storage=db.storage, default_table=product) as load_db:
-        for item in load_db.all():
-            name = item['name']
-            directory = item['path'].replace('/', os.path.sep).split(os.path.sep)[-2]
-            mpm_install(db, item['remote_url'], item['reference'], directory, name)
-    click.echo('Load complete!')
+        if load_db.all():
+            click.echo('Loading modules from file: ' + filename + '...')
+            for item in load_db.all():
+                name = item['name']
+                directory = item['path'].replace('/', os.path.sep).split(os.path.sep)[-2]
+                mpm_install(db, item['remote_url'], item['reference'], directory, name)
+        else:
+            load_db.purge_table(product)
+            click.echo('Nothing to load!')
+            return
+
+        click.echo('Load complete!')
 
 def mpm_freeze(db, filename, product):
-    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         if not os.path.isfile(filename):
             with open(filename, 'a'):
                 pass
-        click.echo('Saving modules to file... ' + filename)
-        with TinyDB(filename, storage=db.storage, default_table=product) as save_db:
-            for item in db_obj.all():
-                if item not in save_db.table(product):
-                    save_db.table(product).insert(item)
-    click.echo('Save complete!')
+
+        if mpm_db.all():
+            click.echo('Freezing installed modules to file... ' + filename)
+            with TinyDB(filename, storage=db.storage, default_table=product) as save_db:
+                    for item in mpm_db.all():
+                        if item not in save_db.table(product):
+                            save_db.table(product).insert(item)
+        else:
+            click.echo('Nothing to freeze!')
+            return
+
+        click.echo('Freeze complete!')
 
 def mpm_purge(db):
-    click.echo('Purging modules...')
-    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
-        for item in db_obj.all():
-            mpm_uninstall(db, item['name'])
-    click.echo('Purging complete!')
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
+        if mpm_db.all():
+            click.echo('Purging all modules...')
+            for item in mpm_db.all():
+                mpm_uninstall(db, item['name'])
+        else:
+            click.echo('Nothing to purge!')
+            return
+
+        click.echo('Purging complete!')
 
 def mpm_show(db):
-    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as db_obj:
-        if db_obj.all():
+    with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
+        if mpm_db.all():
             click.echo('\nmodules installed')
         else:
             click.echo('\nno modules installed')
-        for entry in db_obj.all():
+
+        for entry in mpm_db.all():
             click.echo('-------------------------------------')
             click.echo('name - {}'.format(entry['name']))
             click.echo('url  - {}'.format(entry['remote_url']))
