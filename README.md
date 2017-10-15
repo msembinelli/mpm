@@ -38,6 +38,20 @@ Commands:
   update     Update a modules reference.
 
 
+Usage: mpm convert [OPTIONS] FILENAME
+
+  Gets existing git submodules from the repository, adds them to the
+  working set, then freezes to an output file.
+
+Options:
+  -p, --product TEXT  The configuration name to save the modules to.
+                      [default: _default]
+  -h, --hard          Removes existing git submodules from the repository.
+                      Use this option if you are committing to use mpm to
+                      manage all the modules for your repo.
+  --help              Show this message and exit.
+
+
 Usage: mpm freeze [OPTIONS] FILENAME
 
   Save installed modules to a yaml file.
