@@ -68,8 +68,9 @@ def mpm_uninstall(db, module_name):
         module = Query()
         [db_entry] = db_obj.search(module.name == module_name)
         full_path = db_entry['path'].replace('/', os.path.sep)
-        if db_entry and os.path.exists(full_path):
-            shutil.rmtree(full_path, onerror=onerror_helper)
+        if db_entry:
+            if os.path.exists(full_path):
+                shutil.rmtree(full_path, onerror=onerror_helper)
             db_obj.remove(module.name == module_name)
             click.echo('Uninstall complete!')
         else:
