@@ -268,7 +268,7 @@ def mpm_convert(db, filename, product, hard):
             click.echo('Converting all git submodules to mpm modules...')
             modules = []
             for submodule in submodules:
-                name = os.path.basename(submodule.name)
+                name = os.path.basename(submodule.path)
                 directory = submodule.path.split(name)[0].strip(os.path.sep)
                 remote_url = submodule.url
                 reference = str(submodule.module().head.commit)
