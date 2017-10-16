@@ -109,12 +109,15 @@ Options:
   --help  Show this message and exit.
 
 
-Usage: mpm update [OPTIONS] MODULE_NAME REFERENCE
+Usage: mpm update [OPTIONS] MODULE_NAME
 
-  Update a modules reference.
+  Update a modules reference or install path.
 
 Options:
-  --help  Show this message and exit.
+  -r, --reference TEXT  The upstream remote SHA of the module you want to
+                        checkout.
+  -d, --directory TEXT  Select the folder to move the module to.
+  --help                Show this message and exit.
 ```
 
 ## EXAMPLES
