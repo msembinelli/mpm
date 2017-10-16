@@ -4,6 +4,7 @@ setup(
     name='mpm',
     version='0.2',
     py_modules=['mpm_cli', 'mpm', 'yaml_storage'],
+    test_suite='tests',
     install_requires=[
         'click',
         'gitpython',

@@ -78,30 +78,34 @@ def onerror_helper(func, path, exc_info):
     else:
         raise
 
-def mpm_init(ctx):
+def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_storage=YAMLStorage, gitignore='.gitignore'):
     """
     Initialize the mpm database. Called on every command
     issued with mpm. If the file does not already exist,
     create it. Save the database information in the DBWrapper
     class, to be passed to the other commands.
     """
-    db_path = os.path.join(os.getcwd(), '.mpm/')
     if not os.path.exists(db_path):
         os.mkdir(db_path)
-    db_filepath = os.path.join(db_path, 'mpm-db.yml')
-    with open(db_filepath, 'a+'):
+    db_filepath = os.path.join(db_path, db_filename)
+
+    # Create files if they don't already exist
+    with TinyDB(db_filepath, storage=db_storage, default_table=db_table):
+        pass
+    with open(gitignore, 'a+'):
         pass
 
     create_gitignore_entry = False
-    with open('.gitignore', 'r') as gitignore:
-        if '.mpm/' not in gitignore.read():
+    with open(gitignore, 'r') as gitignore_file:
+        if db_path not in gitignore_file.read():
             create_gitignore_entry = True
 
     if create_gitignore_entry:
-        with open('.gitignore', 'a+') as gitignore:
-            gitignore.write('.mpm/\n')
+        with open(gitignore, 'a+') as gitignore_file:
+            gitignore_file.write(db_path + '\n')
 
-    ctx.obj = DBMetadata(db_filepath, YAMLStorage, 'mpm')
+    ctx.obj = DBMetadata(db_filepath, db_storage, db_table)
+    return ctx.obj
 
 def mpm_install(db, remote_url, reference, directory, name):
     """
