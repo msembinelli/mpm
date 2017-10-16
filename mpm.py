@@ -272,7 +272,7 @@ def mpm_convert(db, filename, product, hard):
                 directory = submodule.path.split(name)[0].strip(os.path.sep)
                 remote_url = submodule.url
                 reference = str(submodule.module().head.commit)
-                mpm_install(db, remote_url, reference, directory, None)
+                mpm_install(db, remote_url, reference, directory, name)
                 if hard:
                     with open('.gitignore', 'a+') as gitignore:
                         gitignore.write(submodule.path + '/\n')
