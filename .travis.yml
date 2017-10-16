@@ -5,7 +5,13 @@ python:
 # command to install dependencies
 install:
   - pip install .
+  - pip install -U pytest
+  - pip install coverage
+  - pip install coveralls
+  - pip install pytest-cov
 
 # command to run tests
 script:
-  - python mpm_test.py
+  py.test -v --cov mpm
+after_success:
+  coveralls
