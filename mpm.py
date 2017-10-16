@@ -40,8 +40,8 @@ def checkout_helper(remote_url, reference, path):
     else:
         repo = Repo(path)
 
-    for remote in repo.remotes:
-        remote.fetch()
+    repo.git.execute(['git', 'fetch', '--all', '-v'])
+
     if is_local_commit_helper(repo, reference):
         click.echo(('\nWARNING: Your reference is being set to a local branch or commit.\n'
                     'If you check-in a yaml file containing a local reference,\n'
