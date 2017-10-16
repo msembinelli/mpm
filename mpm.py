@@ -5,13 +5,27 @@ import click
 
 from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
-from git import Repo, GitCommandError
+from git import Repo, GitCommandError, RemoteProgress
 
-class DBWrapper:
+class DBMetadata:
+    """
+    Contains the path, storage type, and default table name for
+    the internal database.
+    """
     def __init__(self, filepath, storage, table_name):
         self.filepath = filepath
         self.storage = storage
         self.table_name = table_name
+
+def is_local_commit_helper(repo, reference):
+    """
+    Tests if a branch or sha is local.
+    """
+    if not repo.git.execute(['git', 'branch', '-r', '--contains', reference]):
+        return True
+    for head in repo.heads:
+        if reference == head.name:
+            return True
 
 def checkout_helper(remote_url, reference, path):
     """
@@ -22,18 +36,31 @@ def checkout_helper(remote_url, reference, path):
     the latest changes are downloaded.
     """
     if not os.path.exists(os.path.join(path, '.git')):
-        Repo.clone_from(remote_url, path)
-    repo = Repo(path)
+        repo = Repo.clone_from(remote_url, path)
+    else:
+        repo = Repo(path)
+
     for remote in repo.remotes:
         remote.fetch()
-    try:
-        commit_string = 'mpm-' + reference
-        branch = repo.create_head(commit_string, reference)
-        branch.checkout()
-    except GitCommandError as msg:
-        print(msg)
-    except OSError as msg:
-        print(msg)
+    if is_local_commit_helper(repo, reference):
+        click.echo(('\nWARNING: Your reference is being set to a local branch or commit.\n'
+                    'If you check-in a yaml file containing a local reference,\n'
+                    'it will not be properly resolved when someone reloads the\n'
+                    'yaml file with a fresh clone of the repo. It is suggested you\n'
+                    'only commit local references if you are creating a draft commit.\n'))
+    repo.git.checkout(reference)
+
+def yaml_to_path_helper(yaml_path):
+    """
+    Replace forward slashes with current OS path separater.
+    """
+    return yaml_path.replace('/', os.path.sep)
+
+def path_to_yaml_helper(yaml_path):
+    """
+    Replace current OS path separater with forward slashes.
+    """
+    return yaml_path.replace(os.path.sep, '/')
 
 def onerror_helper(func, path, exc_info):
     """
@@ -74,7 +101,7 @@ def mpm_init(ctx):
         with open('.gitignore', 'a+') as gitignore:
             gitignore.write('.mpm/\n')
 
-    ctx.obj = DBWrapper(db_filepath, YAMLStorage, 'mpm')
+    ctx.obj = DBMetadata(db_filepath, YAMLStorage, 'mpm')
 
 def mpm_install(db, remote_url, reference, directory, name):
     """
@@ -96,10 +123,10 @@ def mpm_install(db, remote_url, reference, directory, name):
         module = Query()
         db_entry = mpm_db.get(module.name == module_name)
         full_path = os.path.join(directory, module_name).strip(os.path.sep)
-        new_db_entry = {'name': module_name, 'remote_url': remote_url, 'reference': reference, 'path': full_path.replace(os.path.sep, '/')}
-        if db_entry and os.path.exists(os.path.join(db_entry['path'].replace('/', os.path.sep), '.git')):
+        new_db_entry = {'name': module_name, 'remote_url': remote_url, 'reference': reference, 'path': path_to_yaml_helper(full_path)}
+        if db_entry and os.path.exists(os.path.join(yaml_to_path_helper(db_entry['path']), '.git')):
             click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
-        elif db_entry and not os.path.exists(os.path.join(db_entry['path'].replace('/', os.path.sep), '.git')):
+        elif db_entry and not os.path.exists(os.path.join(yaml_to_path_helper(db_entry['path']), '.git')):
             click.echo('Folder missing, reinstalling ' + module_name + '...')
             checkout_helper(remote_url, reference, full_path)
             mpm_db.update(new_db_entry, module.name == module_name)
@@ -107,7 +134,7 @@ def mpm_install(db, remote_url, reference, directory, name):
             click.echo('Installing ' + module_name + '...')
             checkout_helper(remote_url, reference, full_path)
             mpm_db.insert(new_db_entry)
-            click.echo('Install complete!')
+        click.echo('Install complete!')
 
 def mpm_uninstall(db, module_name):
     """
@@ -119,7 +146,7 @@ def mpm_uninstall(db, module_name):
         db_entry = mpm_db.get(module.name == module_name)
         if db_entry:
             click.echo('Uninstalling ' + module_name + '...')
-            full_path = db_entry['path'].replace('/', os.path.sep)
+            full_path = yaml_to_path_helper(db_entry['path'])
             if os.path.exists(full_path):
                 shutil.rmtree(full_path, onerror=onerror_helper)
             mpm_db.remove(module.name == module_name)
@@ -128,19 +155,33 @@ def mpm_uninstall(db, module_name):
             click.echo('Nothing to uninstall!')
 
 
-def mpm_update(db, module_name, reference):
+def mpm_update(db, module_name, reference, directory):
     """
     Update a module's git reference and update the database entry.
+    Additionally, the directory of the module can be moved if
+    a new directory is entered.
     If no module is found in the database, nothing is updated.
     """
     with TinyDB(db.filepath, storage=db.storage, default_table=db.table_name) as mpm_db:
         module = Query()
         item = mpm_db.get(module.name == module_name)
         if item:
+            if not reference:
+                # Pull up to latest commit on active branch
+                reference = item['reference']
             click.echo('Updating ' + module_name + '...')
+            checkout_helper(item['remote_url'], reference, yaml_to_path_helper(item['path']))
             mpm_db.update({'reference': reference}, module.name == module_name)
-            checkout_helper(item['remote_url'], reference, item['path'])
             click.echo('Module reference updated!')
+
+            if directory:
+                new_path = os.path.join(directory, module_name)
+                if new_path != yaml_to_path_helper(item['path']):
+                    if not os.path.exists(directory):
+                        os.mkdir(directory)
+                    os.rename(yaml_to_path_helper(item['path']), new_path)
+                    mpm_db.update({'path': path_to_yaml_helper(new_path)}, module.name == module_name)
+                    click.echo('Module directory updated!')
         else:
             click.echo('Module not found!')
 
@@ -158,7 +199,7 @@ def mpm_load(db, filename, product):
                 click.echo('Loading modules from file: ' + filename + '...')
                 for item in load_db.all():
                     name = item['name']
-                    directory = item['path'].replace('/', os.path.sep).split(os.path.sep)[-2]
+                    directory = yaml_to_path_helper(item['path']).split(os.path.sep)[-2]
                     mpm_install(db, item['remote_url'], item['reference'], directory, name)
             else:
                 load_db.purge_table(product)
@@ -185,9 +226,9 @@ def mpm_freeze(db, filename, product):
         if mpm_db.all():
             click.echo('Freezing installed modules to file... ' + filename)
             with TinyDB(filename, storage=db.storage, default_table=product) as save_db:
-                    for item in mpm_db.all():
-                        if item not in save_db.table(product):
-                            save_db.table(product).insert(item)
+                for item in mpm_db.all():
+                    if item not in save_db.table(product):
+                        save_db.table(product).insert(item)
         else:
             click.echo('Nothing to freeze!')
             return
