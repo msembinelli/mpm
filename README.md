@@ -1,4 +1,7 @@
 # MPM
+
+[![Build Status](https://travis-ci.org/msembinelli/mpm.svg?branch=master)](https://travis-ci.org/msembinelli/mpm)
+
 A basic package manager for git written in python 2.7. To provide a simpler approach to including nested submodules in large projects.
 
 ## REQUIREMENTS
