@@ -224,8 +224,12 @@ Currently, modules are indexed by their name that was selected at install time. 
 
 ### References: Branches vs SHA1's
 
-For projects that require cloning latest version of a module during development, it is suggested to use a remote branch as the module install reference. This means every time you issue an `update`, `load` or `install` command, the latest commit for that branch will be pulled.
+It is highly recommended that you store SHA1's as references over branches. This is to ensure that the reference stays the same, even if the remote branch on the module has been updated since you first installed the module.
 
-Local branches are allowed in a `freeze` yaml file, but are discouraged because the reference will fail to resolve on a fresh clone and `load` of the repo. Please do not merge any yaml files containing local references to your upstream repository.
+Alternatively if you must use branches, continue reading below:
+
+If you use branches as references, every time you issue an `update`, `load` or `install` command, the latest commit for that branch will be pulled. This could be advantageous for some projects, where the module must always pull up to the latest commit on the branch.
 
 When a project becomes feature complete or frozen, it is suggested to `update` your submodule using a specific SHA-1 reference, to ensure that whenever the project is cloned and the yaml is loaded in the future, the right commits from your modules are pulled in.
+
+Local branches are allowed in a `freeze` yaml file, but are discouraged because the reference will fail to resolve on a fresh clone and `load` of the repo. Please do not merge any yaml files containing local references to your upstream repository.
