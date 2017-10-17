@@ -7,15 +7,16 @@ from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
 from git import Repo, GitCommandError, RemoteProgress
 
-class DBMetadata:
+class MPMMetadata:
     """
     Contains the path, storage type, and default table name for
     the internal database.
     """
-    def __init__(self, filepath, storage, table_name):
+    def __init__(self, filepath, storage, table_name, gitignore_name):
         self.filepath = filepath
         self.storage = storage
         self.table_name = table_name
+        self.gitignore_name = gitignore_name
 
 def is_local_commit_helper(repo, reference):
     """
@@ -78,6 +79,21 @@ def onerror_helper(func, path, exc_info):
     else:
         raise
 
+def add_to_gitignore_helper(gitignore_filename, entry_string):
+    """
+    Checks if the entry_string exists in gitignore. If it
+    doesn't, this function will add it.
+    """
+    entry_forward_slash = path_to_yaml_helper(entry_string).strip('/') + '/'
+    create_gitignore_entry = False
+    with open(gitignore_filename, 'r') as gitignore_file:
+        if entry_forward_slash not in gitignore_file.read():
+            create_gitignore_entry = True
+    # Add path to .gitignore
+    if create_gitignore_entry:
+        with open(gitignore_filename, 'a+') as gitignore_file:
+            gitignore_file.write('\n' + entry_forward_slash)
+
 def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_storage=YAMLStorage, gitignore='.gitignore'):
     """
     Initialize the mpm database. Called on every command
@@ -95,16 +111,9 @@ def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_
     with open(gitignore, 'a+'):
         pass
 
-    create_gitignore_entry = False
-    with open(gitignore, 'r') as gitignore_file:
-        if db_path not in gitignore_file.read():
-            create_gitignore_entry = True
+    add_to_gitignore_helper(gitignore, db_path)
 
-    if create_gitignore_entry:
-        with open(gitignore, 'a+') as gitignore_file:
-            gitignore_file.write('\n' + db_path + '\n')
-
-    ctx.obj = DBMetadata(db_filepath, db_storage, db_table)
+    ctx.obj = MPMMetadata(db_filepath, db_storage, db_table, gitignore)
     return ctx.obj
 
 def mpm_install(db, remote_url, reference, directory, name):
@@ -126,7 +135,9 @@ def mpm_install(db, remote_url, reference, directory, name):
 
         module = Query()
         db_entry = mpm_db.get(module.name == module_name)
-        full_path = os.path.join(directory, module_name).strip(os.path.sep)
+        full_path = os.path.join(directory, module_name)
+        add_to_gitignore_helper(db.gitignore_name, full_path)
+        full_path = full_path.strip(os.path.sep)
         new_db_entry = {'name': module_name, 'remote_url': remote_url, 'reference': reference, 'path': path_to_yaml_helper(full_path)}
         if db_entry and os.path.exists(os.path.join(yaml_to_path_helper(db_entry['path']), '.git')):
             click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
@@ -274,8 +285,6 @@ def mpm_convert(db, filename, product, hard):
                 reference = str(submodule.module().head.commit)
                 mpm_install(db, remote_url, reference, directory, name)
                 if hard:
-                    with open('.gitignore', 'a+') as gitignore:
-                        gitignore.write(submodule.path + '/\n')
                     # move the file so GitPython doesn't delete it from the filsystem
                     os.rename(directory, 'mpm_tmp_mv' + directory)
                     submodule.remove(configuration=True)

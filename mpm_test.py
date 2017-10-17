@@ -1,7 +1,7 @@
 import unittest
 import os
 import shutil
-from mpm import DBMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show, yaml_to_path_helper, path_to_yaml_helper, onerror_helper
+from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show, yaml_to_path_helper, path_to_yaml_helper, onerror_helper
 from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
 
@@ -20,7 +20,7 @@ class TestInit(unittest.TestCase):
         self.gitignore = '.gitignore-test'
         with open(self.gitignore, 'a+'):
             pass
-        metadata_object = DBMetadata(self.db_filepath, self.db_storage, self.db_table)
+        metadata_object = MPMMetadata(self.db_filepath, self.db_storage, self.db_table, self.gitignore)
 
         output_metadata_object = mpm_init(self.context, self.db_table, self.db_path, self.db_filename, self.db_storage, self.gitignore)
 

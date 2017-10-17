@@ -1,8 +1,8 @@
 import click
 
-from mpm import DBMetadata, mpm_init, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show
+from mpm import MPMMetadata, mpm_init, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show
 
-pass_db = click.make_pass_decorator(DBMetadata)
+pass_db = click.make_pass_decorator(MPMMetadata)
 
 @click.group()
 @click.pass_context
