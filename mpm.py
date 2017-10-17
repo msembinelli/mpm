@@ -102,7 +102,7 @@ def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_
 
     if create_gitignore_entry:
         with open(gitignore, 'a+') as gitignore_file:
-            gitignore_file.write(db_path + '\n')
+            gitignore_file.write('\n' + db_path + '\n')
 
     ctx.obj = DBMetadata(db_filepath, db_storage, db_table)
     return ctx.obj
