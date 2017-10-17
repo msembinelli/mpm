@@ -17,6 +17,10 @@ If you have cloned the repo the first thing you must do is install the requireme
 
 MPM uses setuptools for ease of use on all platforms (Windows, Linux, OSX). To set up, navigate to the folder where you cloned MPM, and run:
 
+    pip install .
+
+or, if you want the project to be editable:
+
     pip install --editable .
 
 Voila! Now MPM should be accessible on the command line simply by running:
@@ -125,7 +129,7 @@ Options:
 
 ## EXAMPLES
 
-Before you begin, it is recommended that you add `.mpm/` to your project's .gitignore. This folder contains the mpm working module database, but should not be checked in to your project. The `freeze` command saves a separate YAML file that can be checked in.
+The `./mpm` folder contains the mpm working module database, but should not be checked in to your project. MPM should automatically add this directory to your .gitignore file. The `freeze` command saves a separate YAML file that can be checked in.
 
 ### Installing A Module
 
@@ -134,6 +138,8 @@ We can install modules using the remote URL of the repo:
     mpm install https://github.com/bitcoin/bitcoin.git -d my_modules -n BTC -r remotes/origin/master
 
     mpm install git@github.com:reactjs/redux.git -r 6fdcc8c
+
+When a module is installed, the path will be added to your gitignore. This is because you are opting to have mpm manage your modules. To remove the entry from your gitignore, uninstall the module.
 
 ### Freezing A Module Set
 

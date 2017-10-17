@@ -94,6 +94,22 @@ def add_to_gitignore_helper(gitignore_filename, entry_string):
         with open(gitignore_filename, 'a+') as gitignore_file:
             gitignore_file.write('\n' + entry_forward_slash)
 
+def remove_from_gitignore_helper(gitignore_filename, entry_string):
+    """
+    Checks if the entry_string exists in gitignore. If it
+    doesn't, this function will delete it.
+    """
+    entry_forward_slash = path_to_yaml_helper(entry_string).strip('/') + '/'
+    lines = None
+    with open(gitignore_filename, 'r') as gitignore_file:
+        lines = gitignore_file.readlines()
+    # Remove item from .gitignore
+    with open(gitignore_filename, 'w') as gitignore_file:
+        for line in lines:
+            click.echo(entry_forward_slash)
+            if line != entry_forward_slash:
+                gitignore_file.write(line)
+
 def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_storage=YAMLStorage, gitignore='.gitignore'):
     """
     Initialize the mpm database. Called on every command
@@ -162,6 +178,7 @@ def mpm_uninstall(db, module_name):
         if db_entry:
             click.echo('Uninstalling ' + module_name + '...')
             full_path = yaml_to_path_helper(db_entry['path'])
+            remove_from_gitignore_helper(db.gitignore_name, full_path)
             if os.path.exists(full_path):
                 shutil.rmtree(full_path, onerror=onerror_helper)
             mpm_db.remove(module.name == module_name)
