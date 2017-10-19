@@ -86,13 +86,16 @@ def add_to_gitignore_helper(gitignore_filename, entry_string):
     """
     entry_forward_slash = path_to_yaml_helper(entry_string).strip('/') + '/'
     create_gitignore_entry = False
-    with open(gitignore_filename, 'r') as gitignore_file:
+    added = False
+    with open(gitignore_filename, 'r+') as gitignore_file:
         if entry_forward_slash not in gitignore_file.read():
             create_gitignore_entry = True
     # Add path to .gitignore
     if create_gitignore_entry:
         with open(gitignore_filename, 'a+') as gitignore_file:
-            gitignore_file.write('\n' + entry_forward_slash)
+            gitignore_file.write(entry_forward_slash + '\n')
+            added = True
+    return added
 
 def remove_from_gitignore_helper(gitignore_filename, entry_string):
     """
@@ -101,14 +104,18 @@ def remove_from_gitignore_helper(gitignore_filename, entry_string):
     """
     entry_forward_slash = path_to_yaml_helper(entry_string).strip('/') + '/'
     lines = None
+    removed = False
     with open(gitignore_filename, 'r') as gitignore_file:
         lines = gitignore_file.readlines()
     # Remove item from .gitignore
     with open(gitignore_filename, 'w') as gitignore_file:
         for line in lines:
-            click.echo(entry_forward_slash)
-            if line != entry_forward_slash:
+            if line != entry_forward_slash + '\n':
                 gitignore_file.write(line)
+            else:
+                removed = True
+    return removed
+
 
 def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_storage=YAMLStorage, gitignore='.gitignore'):
     """

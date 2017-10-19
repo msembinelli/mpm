@@ -1,12 +1,39 @@
 import unittest
 import os
 import shutil
-from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show, yaml_to_path_helper, path_to_yaml_helper, onerror_helper
+from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show, yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper
 from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
 
 class HelperObject(object):
     pass
+
+class TestHelpers(unittest.TestCase):
+    def test_yaml_to_path_helper(self):
+        yaml_path = '/test/folder'
+        expected_path = os.path.sep + 'test' + os.path.sep + 'folder'
+        self.assertEqual(expected_path, yaml_to_path_helper(yaml_path))
+
+    def test_path_to_yaml_helper(self):
+        path = os.path.sep + 'test' + os.path.sep + 'folder'
+        expected_yaml_path = '/test/folder'
+        self.assertEqual(expected_yaml_path, path_to_yaml_helper(path))
+
+    def test_add_to_gitignore_helper(self):
+        self.assertTrue(add_to_gitignore_helper('.gitignore', 'test/path'))
+        remove_from_gitignore_helper('.gitignore', 'test/path')
+
+    def test_add_to_gitignore_helper_already_added(self):
+        add_to_gitignore_helper('.gitignore', 'test/path')
+        self.assertFalse(add_to_gitignore_helper('.gitignore', 'test/path'))
+
+    def test_remove_from_gitignore_helper(self):
+        add_to_gitignore_helper('.gitignore', 'test/path')
+        self.assertTrue(remove_from_gitignore_helper('.gitignore', 'test/path'))
+
+    def test_remove_from_gitignore_helper_already_removed(self):
+        self.assertFalse(remove_from_gitignore_helper('.gitignore', 'test/path'))
+
 
 class TestInit(unittest.TestCase):
     def test_init_normal_parameters(self):
@@ -65,6 +92,7 @@ class TestInstall(unittest.TestCase):
         self.assertTrue(os.path.exists(full_path))
         shutil.rmtree(directory, onerror=onerror_helper)
         shutil.rmtree('.mpm', onerror=onerror_helper)
+        remove_from_gitignore_helper('.gitignore', full_path)
 
 if __name__ == '__main__':
     unittest.main()
