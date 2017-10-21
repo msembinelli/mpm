@@ -1,14 +1,26 @@
 import unittest
 import os
 import shutil
-from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show, yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper
+import stat
+from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show, yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper, is_local_commit_helper
 from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
+from git import Repo, GitCommandError, RemoteProgress
 
 class HelperObject(object):
     pass
 
 class TestHelpers(unittest.TestCase):
+    def test_is_local_commit_helper_not_local(self):
+        repo = Repo(os.getcwd())
+        self.assertFalse(is_local_commit_helper(repo, '3c4693aa'))
+
+    def test_is_local_commit_helper_is_local(self):
+        repo = Repo(os.getcwd())
+        branch = repo.create_head('test', '3c4693aa')
+        self.assertTrue(is_local_commit_helper(repo, 'test'))
+        branch = repo.delete_head('test')
+
     def test_yaml_to_path_helper(self):
         yaml_path = '/test/folder'
         expected_path = os.path.sep + 'test' + os.path.sep + 'folder'
@@ -34,6 +46,14 @@ class TestHelpers(unittest.TestCase):
     def test_remove_from_gitignore_helper_already_removed(self):
         self.assertFalse(remove_from_gitignore_helper('.gitignore', 'test/path'))
 
+    #def test_onerror_helper_should_delete_folder(self):
+    #    path = os.path.join(os.getcwd(), 'test_folder')
+    #    os.mkdir(path, 0o000)
+    #    filepath = os.path.join(path, 'file.txt')
+    #    os.umask(0)
+    #    os.open(filepath, os.O_CREAT|os.O_RDONLY, 0o000)
+    #    print(os.access(path, os.W_OK))
+    #    self.assertTrue(onerror_helper(shutil.rmtree, path, 'test'))
 
 class TestInit(unittest.TestCase):
     def test_init_normal_parameters(self):

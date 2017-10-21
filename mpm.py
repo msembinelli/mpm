@@ -27,6 +27,7 @@ def is_local_commit_helper(repo, reference):
     for head in repo.heads:
         if reference == head.name:
             return True
+    return False
 
 def checkout_helper(remote_url, reference, path):
     """
@@ -76,8 +77,9 @@ def onerror_helper(func, path, exc_info):
         # Is the error an access error ?
         os.chmod(path, stat.S_IWUSR)
         func(path)
+        return True
     else:
-        raise
+        return False
 
 def add_to_gitignore_helper(gitignore_filename, entry_string):
     """
