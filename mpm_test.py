@@ -2,7 +2,8 @@ import unittest
 import os
 import shutil
 import stat
-from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show, yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper, is_local_commit_helper
+from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show
+from mpm import yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper, is_local_commit_helper, with_open_or_create_tinydb_helper, with_open_or_create_file_helper, create_directory_helper
 from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
 from git import Repo, GitCommandError, RemoteProgress
@@ -46,17 +47,67 @@ class TestHelpers(unittest.TestCase):
     def test_remove_from_gitignore_helper_already_removed(self):
         self.assertFalse(remove_from_gitignore_helper('.gitignore', 'test/path'))
 
-    #def test_onerror_helper_should_delete_folder(self):
-    #    path = os.path.join(os.getcwd(), 'test_folder')
-    #    os.mkdir(path, 0o000)
-    #    filepath = os.path.join(path, 'file.txt')
-    #    os.umask(0)
-    #    os.open(filepath, os.O_CREAT|os.O_RDONLY, 0o000)
-    #    print(os.access(path, os.W_OK))
-    #    self.assertTrue(onerror_helper(shutil.rmtree, path, 'test'))
+    def test_with_open_or_create_tinydb_helper_should_create_db(self):
+        path = os.getcwd()
+        filepath = os.path.join(path, 'test-db.yaml')
+        with_open_or_create_tinydb_helper(filepath, YAMLStorage)
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue(os.path.isfile(filepath))
+        os.remove(filepath)
+
+    def test_with_open_or_create_tinydb_helper_should_not_create_db(self):
+        path = os.getcwd()
+        filepath = os.path.join(path, 'test-db.yaml')
+        self.assertRaises(TypeError, with_open_or_create_tinydb_helper, filepath, None)
+        self.assertRaises(TypeError, with_open_or_create_tinydb_helper, None, YAMLStorage)
+        self.assertRaises(IOError, with_open_or_create_tinydb_helper, '.', YAMLStorage)
+
+    def test_with_open_or_create_file_helper_should_create_file(self):
+        path = os.getcwd()
+        filepath = os.path.join(path, 'file.txt')
+        with_open_or_create_file_helper(filepath, 'a+')
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue(os.path.isfile(filepath))
+        with_open_or_create_file_helper(filepath, 'r+')
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue(os.path.isfile(filepath))
+        os.remove(filepath)
+
+    def test_with_open_or_create_file_helper_should_not_create_file(self):
+        path = os.getcwd()
+        filepath = os.path.join(path, 'file.txt')
+        self.assertRaises(TypeError, with_open_or_create_file_helper, filepath, None)
+        self.assertRaises(TypeError, with_open_or_create_file_helper, None, 'r+')
+        self.assertRaises(IOError, with_open_or_create_file_helper, '.', 'r+')
+
+    def test_create_directory_helper_should_create_directory(self):
+        path = os.path.join(os.getcwd(), 'test')
+        create_directory_helper(path)
+        self.assertTrue(os.path.exists(path))
+
+    def test_create_directory_helper_should_not_create_directory(self):
+        self.assertRaises(TypeError, create_directory_helper, None)
+
+    def test_onerror_helper_should_delete_file(self):
+        path = 'tmp'
+        create_directory_helper(path)
+        filepath = os.path.join(path, 'file.txt')
+        with_open_or_create_file_helper(filepath, 'a+')
+        os.chmod(filepath, stat.S_IREAD)
+        onerror_helper(os.remove, filepath, 'test')
+        self.assertFalse(os.path.isfile(filepath))
+        shutil.rmtree(path, onerror=onerror_helper)
+
+    def test_onerror_helper_should_not_delete_file(self):
+        path = 'tmp'
+        create_directory_helper(path)
+        filepath = os.path.join(path, 'file.txt')
+        with_open_or_create_file_helper(filepath, 'a+')
+        self.assertRaises(IOError, onerror_helper, os.remove, filepath, 'test exception message')
+        shutil.rmtree(path, onerror=onerror_helper)
 
 class TestInit(unittest.TestCase):
-    def test_init_normal_parameters(self):
+    def setUp(self):
         self.context = HelperObject()
         self.context.obj = None
         self.db_table = 'aaa'
@@ -65,27 +116,27 @@ class TestInit(unittest.TestCase):
         self.db_filepath = os.path.join(self.db_path, self.db_filename)
         self.db_storage = YAMLStorage
         self.gitignore = '.gitignore-test'
-        with open(self.gitignore, 'a+'):
-            pass
-        metadata_object = MPMMetadata(self.db_filepath, self.db_storage, self.db_table, self.gitignore)
 
+    def tearDown(self):
+        shutil.rmtree(self.db_path)
+        os.remove(self.gitignore)
+
+    def test_init_should_init(self):
+        expected_metadata_object = MPMMetadata(self.db_filepath, self.db_storage, self.db_table, self.gitignore)
         output_metadata_object = mpm_init(self.context, self.db_table, self.db_path, self.db_filename, self.db_storage, self.gitignore)
 
         self.assertTrue(os.path.exists(self.db_path))
         self.assertTrue(os.path.exists(self.gitignore))
         self.assertTrue(os.path.isfile(self.db_filepath))
-        self.assertEqual(metadata_object.filepath, output_metadata_object.filepath)
-        self.assertEqual(metadata_object.storage, output_metadata_object.storage)
-        self.assertEqual(metadata_object.table_name, output_metadata_object.table_name)
+        self.assertEqual(expected_metadata_object.filepath, output_metadata_object.filepath)
+        self.assertEqual(expected_metadata_object.storage, output_metadata_object.storage)
+        self.assertEqual(expected_metadata_object.table_name, output_metadata_object.table_name)
         with open(self.gitignore, 'r') as gitignore_file:
             self.assertTrue(self.db_path in gitignore_file.read())
         with open(self.db_filepath, 'r') as database_file:
             self.assertTrue(self.db_table in database_file.read())
 
-        shutil.rmtree(self.db_path)
-        os.remove(self.gitignore)
-
-class TestInstall(unittest.TestCase):
+class TestCommands(unittest.TestCase):
     def setUp(self):
         self.context = HelperObject()
         self.db = mpm_init(self.context)

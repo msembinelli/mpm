@@ -77,9 +77,8 @@ def onerror_helper(func, path, exc_info):
         # Is the error an access error ?
         os.chmod(path, stat.S_IWUSR)
         func(path)
-        return True
     else:
-        return False
+        raise IOError(exc_info)
 
 def add_to_gitignore_helper(gitignore_filename, entry_string):
     """
@@ -118,6 +117,28 @@ def remove_from_gitignore_helper(gitignore_filename, entry_string):
                 removed = True
     return removed
 
+def with_open_or_create_tinydb_helper(filepath, storage, table='_default'):
+    """
+    Open and or create the tinydb file with the input filepath,
+    storage type, and default_table.
+    """
+    with TinyDB(filepath, storage=storage, default_table=table):
+        pass
+
+def with_open_or_create_file_helper(filepath, mode):
+    """
+    Open and or create the file with the input filepath,
+    and mode.
+    """
+    with open(filepath, mode):
+        pass
+
+def create_directory_helper(path):
+    """
+    If the path does not exist, create the directory.
+    """
+    if not os.path.exists(path):
+        os.mkdir(path)
 
 def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_storage=YAMLStorage, gitignore='.gitignore'):
     """
@@ -126,20 +147,19 @@ def mpm_init(ctx, db_table='mpm', db_path='.mpm/', db_filename='mpm-db.yml', db_
     create it. Save the database information in the DBWrapper
     class, to be passed to the other commands.
     """
-    if not os.path.exists(db_path):
-        os.mkdir(db_path)
+    create_directory_helper(db_path)
     db_filepath = os.path.join(db_path, db_filename)
 
     # Create files if they don't already exist
-    with TinyDB(db_filepath, storage=db_storage, default_table=db_table):
-        pass
-    with open(gitignore, 'a+'):
-        pass
+    with_open_or_create_tinydb_helper(db_filepath, db_storage, db_table)
+    with_open_or_create_file_helper(gitignore, 'a+')
 
     add_to_gitignore_helper(gitignore, db_path)
 
-    ctx.obj = MPMMetadata(db_filepath, db_storage, db_table, gitignore)
-    return ctx.obj
+    metadata = MPMMetadata(db_filepath, db_storage, db_table, gitignore)
+    ctx.obj = metadata # Set the click context object
+
+    return metadata
 
 def mpm_install(db, remote_url, reference, directory, name):
     """
