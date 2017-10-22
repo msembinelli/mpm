@@ -14,18 +14,39 @@ class HelperObject(object):
 
 class TestHelpers(unittest.TestCase):
     def test_is_local_commit_helper_not_local(self):
-        repo = Repo(os.getcwd())
-        self.assertFalse(is_local_commit_helper(repo, '3c4693aa'))
+        path = os.path.join('test', 'broker')
+        url = 'https://github.com/msembinelli/broker.git'
+        ref = '2dc33423188a7e06fa6e9725a0a74059b009ff6a'
+        clone_helper(url, path)
+        repo = Repo(path)
+        self.assertFalse(is_local_commit_helper(repo, '2dc3342318'))
+        repo.close()
+        shutil.rmtree(path, onerror=onerror_helper)
 
     def test_is_local_commit_helper_is_local(self):
-        repo = Repo(os.getcwd())
-        branch = repo.create_head('test', '3c4693aa')
-        self.assertTrue(is_local_commit_helper(repo, 'test'))
-        branch = repo.delete_head('test')
+        path = os.path.join('test', 'broker')
+        url = 'https://github.com/msembinelli/broker.git'
+        ref = '2dc33423188a7e06fa6e9725a0a74059b009ff6a'
+        clone_helper(url, path)
+        repo = Repo(path)
+        branch = repo.create_head('test_branch', '2dc33423188a7e06fa6e9725a0a74059b009ff6a')
+        self.assertTrue(is_local_commit_helper(repo, 'test_branch'))
+        repo.git.checkout('test_branch')
+        new_path = os.path.join(path, 'test_module')
+        os.mkdir(new_path)
+        repo.index.add(['test_module'])
+        repo.index.commit("Added a new folder test")
+        self.assertTrue(is_local_commit_helper(repo, 'test_branch'))
+        repo.close()
+        shutil.rmtree(path, onerror=onerror_helper)
 
     def test_clone_helper_should_clone(self):
         path = os.path.join('test', 'broker')
         url = 'https://github.com/msembinelli/broker.git'
+        clone_helper(url, path)
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue(os.path.exists(os.path.join(path, '.git')))
+        # Try cloning again
         clone_helper(url, path)
         self.assertTrue(os.path.exists(path))
         self.assertTrue(os.path.exists(os.path.join(path, '.git')))
@@ -49,6 +70,10 @@ class TestHelpers(unittest.TestCase):
         checkout_helper(path, ref)
         repo = Repo(path)
         self.assertEqual(repo.head.commit.hexsha, ref)
+        repo.close()
+        repo = Repo(path)
+        branch = repo.create_head('test', '2dc33423188a7e06fa6e9725a0a74059b009ff6a')
+        checkout_helper(path, 'test')
         repo.close()
         shutil.rmtree(path, onerror=onerror_helper)
 
