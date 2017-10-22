@@ -12,6 +12,6 @@ install:
 
 # command to run tests
 script:
-  py.test -v --cov mpm mpm_helpers
+  py.test -v --cov mpm.py mpm_helpers.py
 after_success:
   coveralls
