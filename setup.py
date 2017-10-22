@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name='mpm',
     version='0.2',
-    py_modules=['mpm_cli', 'mpm', 'yaml_storage'],
+    py_modules=['mpm_cli', 'mpm', 'mpm_yaml_storage', 'mpm_helpers'],
     test_suite='tests',
     install_requires=[
         'click',
