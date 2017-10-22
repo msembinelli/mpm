@@ -22,6 +22,7 @@ class TestHelpers(unittest.TestCase):
         self.assertFalse(is_local_commit_helper(repo, '2dc3342318'))
         repo.close()
         shutil.rmtree(path, onerror=onerror_helper)
+        os.rmdir('test')
 
     def test_is_local_commit_helper_is_local(self):
         path = os.path.join('test', 'broker')
@@ -39,6 +40,7 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(is_local_commit_helper(repo, 'test_branch'))
         repo.close()
         shutil.rmtree(path, onerror=onerror_helper)
+        os.rmdir('test')
 
     def test_clone_helper_should_clone(self):
         path = os.path.join('test', 'broker')
@@ -51,6 +53,7 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
         self.assertTrue(os.path.exists(os.path.join(path, '.git')))
         shutil.rmtree(path, onerror=onerror_helper)
+        os.rmdir('test')
 
     def test_clone_helper_should_not_clone(self):
         path = os.path.join('test', 'test')
@@ -76,6 +79,7 @@ class TestHelpers(unittest.TestCase):
         checkout_helper(path, 'test')
         repo.close()
         shutil.rmtree(path, onerror=onerror_helper)
+        os.rmdir('test')
 
     def test_checkout_helper_should_not_checkout(self):
         path = os.path.join('test', 'broker')
@@ -86,6 +90,7 @@ class TestHelpers(unittest.TestCase):
         self.assertRaises(TypeError, checkout_helper, None, '2dc3342')
         self.assertRaises(TypeError, checkout_helper, path, None)
         shutil.rmtree(path, onerror=onerror_helper)
+        os.rmdir('test')
 
     def test_clone_and_checkout_helper_should_clone_and_checkout(self):
         path = os.path.join('test', 'broker')
@@ -98,6 +103,7 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(repo.head.commit.hexsha, ref)
         repo.close()
         shutil.rmtree(path, onerror=onerror_helper)
+        os.rmdir('test')
 
     def test_yaml_to_path_helper(self):
         yaml_path = '/test/folder'
