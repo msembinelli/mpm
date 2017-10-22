@@ -3,7 +3,7 @@ import os
 import shutil
 import stat
 from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show
-from mpm import yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper, is_local_commit_helper, with_open_or_create_tinydb_helper, with_open_or_create_file_helper, create_directory_helper
+from mpm import clone_and_checkout_helper, clone_helper, checkout_helper, yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper, is_local_commit_helper, with_open_or_create_tinydb_helper, with_open_or_create_file_helper, create_directory_helper
 from yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
 from git import Repo, GitCommandError, RemoteProgress
@@ -21,6 +21,55 @@ class TestHelpers(unittest.TestCase):
         branch = repo.create_head('test', '3c4693aa')
         self.assertTrue(is_local_commit_helper(repo, 'test'))
         branch = repo.delete_head('test')
+
+    def test_clone_helper_should_clone(self):
+        path = os.path.join('test', 'broker')
+        url = 'https://github.com/msembinelli/broker.git'
+        repo = clone_helper(url, path)
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue(os.path.exists(os.path.join(path, '.git')))
+        repo.close()
+        shutil.rmtree(path, onerror=onerror_helper)
+
+    def test_clone_helper_should_not_clone(self):
+        path = os.path.join('test', 'test')
+        # Bad URL
+        url = 'https://github.com/fake/repo/repo123456789.git'
+        self.assertRaises(GitCommandError, clone_helper, url, path)
+        self.assertFalse(os.path.exists(path))
+        self.assertFalse(os.path.exists(os.path.join(path, '.git')))
+
+    def test_checkout_helper_should_checkout(self):
+        path = os.path.join('test', 'broker')
+        url = 'https://github.com/msembinelli/broker.git'
+        ref = '2dc33423188a7e06fa6e9725a0a74059b009ff6a'
+        repo = clone_helper(url, path)
+        checkout_helper(repo, ref)
+        self.assertEqual(repo.head.commit.hexsha, ref)
+        repo.close()
+        shutil.rmtree(path, onerror=onerror_helper)
+
+    def test_checkout_helper_should_not_checkout(self):
+        path = os.path.join('test', 'broker')
+        url = 'https://github.com/msembinelli/broker.git'
+        ref = '123456789'
+        repo = clone_helper(url, path)
+        self.assertRaises(GitCommandError, checkout_helper, repo, ref)
+        self.assertRaises(AttributeError, checkout_helper, None, '2dc3342')
+        repo.close()
+        shutil.rmtree(path, onerror=onerror_helper)
+
+    def test_clone_and_checkout_helper_should_clone_and_checkout(self):
+        path = os.path.join('test', 'broker')
+        url = 'https://github.com/msembinelli/broker.git'
+        ref = '2dc33423188a7e06fa6e9725a0a74059b009ff6a'
+        clone_and_checkout_helper(url, ref, path)
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue(os.path.exists(os.path.join(path, '.git')))
+        repo = Repo(path)
+        self.assertEqual(repo.head.commit.hexsha, ref)
+        repo.close()
+        shutil.rmtree(path, onerror=onerror_helper)
 
     def test_yaml_to_path_helper(self):
         yaml_path = '/test/folder'
@@ -84,6 +133,7 @@ class TestHelpers(unittest.TestCase):
         path = os.path.join(os.getcwd(), 'test')
         create_directory_helper(path)
         self.assertTrue(os.path.exists(path))
+        os.rmdir(path)
 
     def test_create_directory_helper_should_not_create_directory(self):
         self.assertRaises(TypeError, create_directory_helper, None)

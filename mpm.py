@@ -29,19 +29,28 @@ def is_local_commit_helper(repo, reference):
             return True
     return False
 
-def checkout_helper(remote_url, reference, path):
+def clone_helper(remote_url, path):
     """
-    Checkout helper used by the install and update commands.
-    Uses GitPython to clone and checkout a git repo from
-    a given URL and remote reference (SHA). Before checking out
-    a fetch is issued on all remote upstream branches to ensure
-    the latest changes are downloaded.
+    Clone helper used by the install and update commands.
+    Uses GitPython to clone a git repo from a given URL.
+    If a repo at the given path already exists, it won't be
+    recloned. Returns the repo object.
     """
     if not os.path.exists(os.path.join(path, '.git')):
         repo = Repo.clone_from(remote_url, path)
     else:
         repo = Repo(path)
 
+    return repo
+
+def checkout_helper(repo, reference):
+    """
+    Checkout helper used by the install and update commands.
+    Uses GitPython to checkout a git repo from a given remote
+    reference (SHA or remote). Before checking out a fetch is issued on
+    all remote upstream branches to ensure the latest changes
+    are downloaded.
+    """
     repo.git.execute(['git', 'fetch', '--all', '-v'])
 
     if is_local_commit_helper(repo, reference):
@@ -51,6 +60,16 @@ def checkout_helper(remote_url, reference, path):
                     'yaml file with a fresh clone of the repo. It is suggested you\n'
                     'only commit local references if you are creating a draft commit.\n'))
     repo.git.checkout(reference)
+
+def clone_and_checkout_helper(remote_url, reference, path):
+    """
+    Clones and checks out a repo at the given url and reference
+    to the provided path. Calls the checkout and clone helpers.
+    """
+    repo = clone_helper(remote_url, path)
+    checkout_helper(repo, reference)
+    repo.close()
+
 
 def yaml_to_path_helper(yaml_path):
     """
@@ -188,11 +207,11 @@ def mpm_install(db, remote_url, reference, directory, name):
             click.echo('Already Installed! If you wish to update the branch/reference, use the update command.')
         elif db_entry and not os.path.exists(os.path.join(yaml_to_path_helper(db_entry['path']), '.git')):
             click.echo('Folder missing, reinstalling ' + module_name + '...')
-            checkout_helper(remote_url, reference, full_path)
+            clone_and_checkout_helper(remote_url, reference, full_path)
             mpm_db.update(new_db_entry, module.name == module_name)
         else:
             click.echo('Installing ' + module_name + '...')
-            checkout_helper(remote_url, reference, full_path)
+            clone_and_checkout_helper(remote_url, reference, full_path)
             mpm_db.insert(new_db_entry)
         click.echo('Install complete!')
 
@@ -231,7 +250,7 @@ def mpm_update(db, module_name, reference, directory):
                 # Pull up to latest commit on active branch
                 reference = item['reference']
             click.echo('Updating ' + module_name + '...')
-            checkout_helper(item['remote_url'], reference, yaml_to_path_helper(item['path']))
+            clone_and_checkout_helper(item['remote_url'], reference, yaml_to_path_helper(item['path']))
             mpm_db.update({'reference': reference}, module.name == module_name)
             click.echo('Module reference updated!')
 
