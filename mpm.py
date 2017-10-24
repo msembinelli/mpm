@@ -90,8 +90,9 @@ def mpm_uninstall(db, module_name):
             if os.path.exists(full_path):
                 shutil.rmtree(full_path, onerror=onerror_helper)
             mpm_db.remove(module.name == module_name)
-            if not os.listdir(full_path.split(module_name)[0]):
-                os.rmdir(full_path.split(module_name)[0])
+            if full_path != module_name:
+                if not os.listdir(full_path.split(module_name)[0]):
+                    os.rmdir(full_path.split(module_name)[0])
             click.echo('Uninstall complete!')
         else:
             click.echo('Nothing to uninstall!')
@@ -206,8 +207,12 @@ def mpm_convert(db, filename, product, hard):
             click.echo('Converting all git submodules to mpm modules...')
             modules = []
             for submodule in submodules:
+                submodule.update(init=True)
                 name = os.path.basename(submodule.path)
-                directory = submodule.path.split(name)[0].strip(os.path.sep)
+                if name != submodule.path:
+                    directory = submodule.path.split(name)[0].strip(os.path.sep)
+                else:
+                    directory = name
                 remote_url = submodule.url
                 reference = str(submodule.module().head.commit)
                 mpm_install(db, remote_url, reference, directory, name)

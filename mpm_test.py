@@ -401,6 +401,56 @@ class TestUpdate(unittest.TestCase):
     def test_update_bad_parameters(self):
         self.assertRaises(Exception, mpm_update, None, self.name, self.reference, self.directory)
 
+class TestConvert(unittest.TestCase):
+    def setUp(self):
+        self.context = HelperObject()
+        self.db = mpm_init(self.context)
+        self.remote_url = 'https://github.com/msembinelli/ssdb-google-apps-script.git'
+        self.reference = 'remotes/origin/master'
+        self.directory = 'modules'
+        self.name = 'ssdb-google-apps-script'
+        self.full_path = os.path.join(self.directory, self.name)
+        mpm_install(self.db, self.remote_url, self.reference, self.directory, None)
+
+    def tearDown(self):
+        mpm_uninstall(self.db, self.name)
+
+    def test_convert_hard(self):
+        filename = 'convert-ssdb.yaml'
+        product = '_default'
+        expected_module_name = 'sjcl-google-apps-script'
+        dir_before = os.getcwd()
+        os.chdir(self.full_path)
+        context = HelperObject()
+        new_db = mpm_init(context)
+        mpm_convert(new_db, filename, product, True)
+        self.assertTrue(os.path.isfile(filename))
+        with TinyDB(filename, storage=YAMLStorage) as db:
+            module = Query()
+            db_entry = db.get(module.name == expected_module_name)
+            self.assertIsNotNone(db_entry)
+        with open('.gitmodules', 'r') as gitmodules:
+            self.assertTrue(expected_module_name not in gitmodules.read())
+        os.chdir(dir_before)
+
+    def test_convert_soft(self):
+        filename = 'convert-ssdb.yaml'
+        product = '_default'
+        expected_module_name = 'sjcl-google-apps-script'
+        dir_before = os.getcwd()
+        os.chdir(self.full_path)
+        context = HelperObject()
+        new_db = mpm_init(context)
+        mpm_convert(new_db, filename, product, False)
+        self.assertTrue(os.path.isfile(filename))
+        with TinyDB(filename, storage=YAMLStorage) as db:
+            module = Query()
+            db_entry = db.get(module.name == expected_module_name)
+            self.assertIsNotNone(db_entry)
+        with open('.gitmodules', 'r') as gitmodules:
+            self.assertTrue(expected_module_name in gitmodules.read())
+        os.chdir(dir_before)
+
 class TestShow(unittest.TestCase):
     def setUp(self):
         self.context = HelperObject()
