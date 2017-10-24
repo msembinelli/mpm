@@ -405,10 +405,10 @@ class TestConvert(unittest.TestCase):
     def setUp(self):
         self.context = HelperObject()
         self.db = mpm_init(self.context)
-        self.remote_url = 'https://github.com/msembinelli/ssdb-google-apps-script.git'
+        self.remote_url = 'https://github.com/msembinelli/test-mpm-with-submodule.git'
         self.reference = 'remotes/origin/master'
         self.directory = 'modules'
-        self.name = 'ssdb-google-apps-script'
+        self.name = 'test-mpm-with-submodule'
         self.full_path = os.path.join(self.directory, self.name)
         mpm_install(self.db, self.remote_url, self.reference, self.directory, None)
 
@@ -416,9 +416,9 @@ class TestConvert(unittest.TestCase):
         mpm_uninstall(self.db, self.name)
 
     def test_convert_hard(self):
-        filename = 'convert-ssdb.yaml'
+        filename = 'convert-test.yaml'
         product = '_default'
-        expected_module_name = 'sjcl-google-apps-script'
+        expected_module_name = 'broker'
         dir_before = os.getcwd()
         os.chdir(self.full_path)
         context = HelperObject()
@@ -434,9 +434,9 @@ class TestConvert(unittest.TestCase):
         os.chdir(dir_before)
 
     def test_convert_soft(self):
-        filename = 'convert-ssdb.yaml'
+        filename = 'convert-test.yaml'
         product = '_default'
-        expected_module_name = 'sjcl-google-apps-script'
+        expected_module_name = 'broker'
         dir_before = os.getcwd()
         os.chdir(self.full_path)
         context = HelperObject()
