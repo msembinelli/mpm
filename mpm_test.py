@@ -220,13 +220,13 @@ class TestInit(unittest.TestCase):
         with open(self.db_filepath, 'r') as database_file:
             self.assertTrue(self.db_table in database_file.read())
 
-class TestCommands(unittest.TestCase):
+class TestInstall(unittest.TestCase):
     def setUp(self):
         self.context = HelperObject()
         self.db = mpm_init(self.context)
 
     def tearDown(self):
-        pass
+        shutil.rmtree('.mpm', onerror=onerror_helper)
 
     def test_install_defaults(self):
         remote_url = 'https://github.com/msembinelli/broker.git'
@@ -246,8 +246,148 @@ class TestCommands(unittest.TestCase):
         self.assertTrue(os.path.exists(directory))
         self.assertTrue(os.path.exists(full_path))
         shutil.rmtree(directory, onerror=onerror_helper)
-        shutil.rmtree('.mpm', onerror=onerror_helper)
         remove_from_gitignore_helper('.gitignore', full_path)
+
+    def test_install_custom_name(self):
+        remote_url = 'https://github.com/msembinelli/broker.git'
+        reference = 'remotes/origin/master'
+        directory = 'modules'
+        name = 'broker-test'
+        full_path = os.path.join(directory, name)
+        expected_db_entry = {'name': name, 'remote_url': remote_url, 'reference': reference, 'path': path_to_yaml_helper(full_path)}
+
+        mpm_install(self.db, remote_url, reference, directory, name)
+
+        with TinyDB(self.db.filepath, storage=self.db.storage, default_table=self.db.table_name) as mpm_db:
+            module = Query()
+            db_entry = mpm_db.get(module.name == name)
+            self.assertEqual(db_entry, expected_db_entry)
+
+        self.assertTrue(os.path.exists(directory))
+        self.assertTrue(os.path.exists(full_path))
+        shutil.rmtree(directory, onerror=onerror_helper)
+        remove_from_gitignore_helper('.gitignore', full_path)
+
+    def test_install_already_installed(self):
+        remote_url = 'https://github.com/msembinelli/broker.git'
+        reference = 'remotes/origin/master'
+        directory = 'modules'
+        name = 'broker'
+        full_path = os.path.join(directory, name)
+        expected_db_entry = {'name': name, 'remote_url': remote_url, 'reference': reference, 'path': path_to_yaml_helper(full_path)}
+
+        mpm_install(self.db, remote_url, reference, directory, None)
+        mpm_install(self.db, remote_url, reference, directory, None)
+
+        with TinyDB(self.db.filepath, storage=self.db.storage, default_table=self.db.table_name) as mpm_db:
+            module = Query()
+            db_entry = mpm_db.get(module.name == name)
+            self.assertEqual(db_entry, expected_db_entry)
+
+        self.assertTrue(os.path.exists(directory))
+        self.assertTrue(os.path.exists(full_path))
+        shutil.rmtree(directory, onerror=onerror_helper)
+        remove_from_gitignore_helper('.gitignore', full_path)
+
+    def test_install_reinstall(self):
+        remote_url = 'https://github.com/msembinelli/broker.git'
+        reference = 'remotes/origin/master'
+        directory = 'modules'
+        name = 'broker'
+        full_path = os.path.join(directory, name)
+        expected_db_entry = {'name': name, 'remote_url': remote_url, 'reference': reference, 'path': path_to_yaml_helper(full_path)}
+
+        mpm_install(self.db, remote_url, reference, directory, None)
+        shutil.rmtree(directory, onerror=onerror_helper)
+        self.assertFalse(os.path.exists(full_path))
+        mpm_install(self.db, remote_url, reference, directory, None)
+
+        with TinyDB(self.db.filepath, storage=self.db.storage, default_table=self.db.table_name) as mpm_db:
+            module = Query()
+            db_entry = mpm_db.get(module.name == name)
+            self.assertEqual(db_entry, expected_db_entry)
+
+        self.assertTrue(os.path.exists(directory))
+        self.assertTrue(os.path.exists(full_path))
+        shutil.rmtree(directory, onerror=onerror_helper)
+        remove_from_gitignore_helper('.gitignore', full_path)
+
+    def test_install_bad_parameters(self):
+        remote_url = 'https://github.com/msembinelli/broker.git'
+        reference = 'remotes/origin/master'
+        directory = 'modules'
+        name = 'broker'
+        full_path = os.path.join(directory, name)
+        expected_db_entry = {'name': name, 'remote_url': remote_url, 'reference': reference, 'path': path_to_yaml_helper(full_path)}
+
+        self.assertRaises(Exception, mpm_install, None, remote_url, reference, directory, None)
+        self.assertRaises(Exception, mpm_install, self.db, None, reference, directory, None)
+        self.assertRaises(Exception, mpm_install, self.db, remote_url, None, directory, None)
+        self.assertRaises(Exception, mpm_install, self.db, remote_url, reference, None, None)
+
+class TestUninstall(unittest.TestCase):
+    def setUp(self):
+        self.context = HelperObject()
+        self.db = mpm_init(self.context)
+
+    def tearDown(self):
+        shutil.rmtree('.mpm', onerror=onerror_helper)
+
+    def test_uninstall_defaults(self):
+        remote_url = 'https://github.com/msembinelli/broker.git'
+        reference = 'remotes/origin/master'
+        directory = 'modules'
+        name = 'broker'
+        full_path = os.path.join(directory, name)
+        expected_db_entry = {'name': name, 'remote_url': remote_url, 'reference': reference, 'path': path_to_yaml_helper(full_path)}
+
+        mpm_install(self.db, remote_url, reference, directory, None)
+        mpm_uninstall(self.db, name)
+        self.assertFalse(os.path.exists(full_path))
+
+        with TinyDB(self.db.filepath, storage=self.db.storage, default_table=self.db.table_name) as mpm_db:
+            module = Query()
+            db_entry = mpm_db.get(module.name == name)
+            self.assertIsNone(db_entry)
+            self.assertEqual([], mpm_db.all())
+
+    def test_uninstall_nothing_to_uninstall(self):
+        name = 'broker'
+        mpm_uninstall(self.db, name)
+
+        with TinyDB(self.db.filepath, storage=self.db.storage, default_table=self.db.table_name) as mpm_db:
+            module = Query()
+            db_entry = mpm_db.get(module.name == name)
+            self.assertIsNone(db_entry)
+            self.assertEqual([], mpm_db.all())
+
+    def test_uninstall_bad_parameters(self):
+        name = 'broker'
+        self.assertRaises(Exception, mpm_uninstall, None, name)
+
+class TestShow(unittest.TestCase):
+    def setUp(self):
+        self.context = HelperObject()
+        self.db = mpm_init(self.context)
+        self.remote_url = 'https://github.com/msembinelli/broker.git'
+        self.reference = 'remotes/origin/master'
+        self.directory = 'modules'
+        self.name = 'broker'
+
+    def tearDown(self):
+        shutil.rmtree('.mpm', onerror=onerror_helper)
+
+    def test_show(self):
+        name = 'broker'
+        mpm_install(self.db, self.remote_url, self.reference, self.directory, None)
+        mpm_show(self.db)
+        mpm_uninstall(self.db, name)
+
+    def test_show_no_modules(self):
+        mpm_show(self.db)
+
+    def test_show_bad_parameters(self):
+        self.assertRaises(AttributeError, mpm_show, None)
 
 if __name__ == '__main__':
     unittest.main()
