@@ -365,6 +365,42 @@ class TestUninstall(unittest.TestCase):
         name = 'broker'
         self.assertRaises(Exception, mpm_uninstall, None, name)
 
+class TestUpdate(unittest.TestCase):
+    def setUp(self):
+        self.context = HelperObject()
+        self.db = mpm_init(self.context)
+        self.remote_url = 'https://github.com/msembinelli/broker.git'
+        self.reference = 'remotes/origin/master'
+        self.directory = 'modules'
+        self.name = 'broker'
+        self.full_path = os.path.join(self.directory, self.name)
+        mpm_install(self.db, self.remote_url, self.reference, self.directory, None)
+
+    def tearDown(self):
+        mpm_uninstall(self.db, self.name)
+        shutil.rmtree('.mpm', onerror=onerror_helper)
+
+    def test_update_new_reference(self):
+        new_ref = '2dc33423188a7e06fa6e9725a0a74059b009ff6a'
+        mpm_update(self.db, self.name, new_ref, None)
+        repo = Repo(self.full_path)
+        self.assertEqual(repo.head.commit.hexsha, new_ref)
+        repo.close()
+
+    def test_update_new_directory(self):
+        new_directory = 'modules-test'
+        mpm_update(self.db, self.name, None, new_directory)
+        self.assertTrue(os.path.exists(os.path.join(new_directory, self.name)))
+        repo = Repo(os.path.join(new_directory, self.name))
+        self.assertIsNotNone(repo)
+        repo.close()
+
+    def test_update_no_module(self):
+        self.assertIsNone(mpm_update(self.db, 'broker-test', self.reference, self.directory))
+
+    def test_update_bad_parameters(self):
+        self.assertRaises(Exception, mpm_update, None, self.name, self.reference, self.directory)
+
 class TestShow(unittest.TestCase):
     def setUp(self):
         self.context = HelperObject()

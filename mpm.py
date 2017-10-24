@@ -90,6 +90,8 @@ def mpm_uninstall(db, module_name):
             if os.path.exists(full_path):
                 shutil.rmtree(full_path, onerror=onerror_helper)
             mpm_db.remove(module.name == module_name)
+            if not os.listdir(full_path.split(module_name)[0]):
+                os.rmdir(full_path.split(module_name)[0])
             click.echo('Uninstall complete!')
         else:
             click.echo('Nothing to uninstall!')
