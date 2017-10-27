@@ -488,7 +488,7 @@ class TestLoad(unittest.TestCase):
         context = HelperObject()
         new_db = mpm_init(context)
         filename = 'package.yaml'
-        product = '_default'
+        product = 'travis'
         self.assertIsNone(mpm_load(new_db, filename, product))
         os.chdir(dir_before)
 
