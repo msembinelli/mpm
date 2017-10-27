@@ -468,6 +468,45 @@ class TestConvert(unittest.TestCase):
         self.assertIsNone(mpm_convert(new_db, filename, product, False))
         os.remove('.gitmodules')
 
+class TestLoad(unittest.TestCase):
+    def setUp(self):
+        self.context = HelperObject()
+        self.db = mpm_init(self.context)
+        self.remote_url = 'https://github.com/msembinelli/q2.git'
+        self.reference = 'remotes/origin/master'
+        self.directory = 'modules'
+        self.name = 'q2'
+        self.full_path = os.path.join(self.directory, self.name)
+        mpm_install(self.db, self.remote_url, self.reference, self.directory, None)
+
+    def tearDown(self):
+        mpm_uninstall(self.db, self.name)
+
+    def test_load_defaults(self):
+        dir_before = os.getcwd()
+        os.chdir(self.full_path)
+        context = HelperObject()
+        new_db = mpm_init(context)
+        filename = 'package.yaml'
+        product = '_default'
+        self.assertIsNone(mpm_load(new_db, filename, product))
+        os.chdir(dir_before)
+
+    def test_load_nothing_to_load(self):
+        with open('package.yaml', 'a+') as file:
+            pass
+        filename = 'package.yaml'
+        product = '_default'
+        self.assertIsNone(mpm_load(self.db, filename, product))
+        os.remove(filename)
+
+    def test_load_file_not_found(self):
+        filename = 'package.yaml'
+        product = '_default'
+        self.assertFalse(os.path.isfile(filename))
+        self.assertIsNone(mpm_load(self.db, filename, product))
+
+
 class TestShow(unittest.TestCase):
     def setUp(self):
         self.context = HelperObject()
