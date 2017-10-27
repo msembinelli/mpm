@@ -451,6 +451,23 @@ class TestConvert(unittest.TestCase):
             self.assertTrue(expected_module_name in gitmodules.read())
         os.chdir(dir_before)
 
+    def test_convert_no_gitmodules(self):
+        filename = 'convert-test.yaml'
+        product = '_default'
+        context = HelperObject()
+        new_db = mpm_init(context)
+        self.assertIsNone(mpm_convert(new_db, filename, product, False))
+
+    def test_convert_no_submodules(self):
+        filename = 'convert-test.yaml'
+        product = '_default'
+        with open('.gitmodules', 'a+') as file:
+            pass
+        context = HelperObject()
+        new_db = mpm_init(context)
+        self.assertIsNone(mpm_convert(new_db, filename, product, False))
+        os.remove('.gitmodules')
+
 class TestShow(unittest.TestCase):
     def setUp(self):
         self.context = HelperObject()
