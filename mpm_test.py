@@ -506,6 +506,28 @@ class TestLoad(unittest.TestCase):
         self.assertFalse(os.path.isfile(filename))
         self.assertIsNone(mpm_load(self.db, filename, product))
 
+class TestPurge(unittest.TestCase):
+    def setUp(self):
+        self.context = HelperObject()
+        self.db = mpm_init(self.context)
+        self.remote_url = 'https://github.com/msembinelli/q2.git'
+        self.reference = 'remotes/origin/master'
+        self.directory = 'modules'
+        self.name = 'q2'
+        self.full_path = os.path.join(self.directory, self.name)
+
+    def tearDown(self):
+        pass
+
+    def test_purge(self):
+        mpm_install(self.db, self.remote_url, self.reference, self.directory, None)
+        self.assertIsNone(mpm_purge(self.db))
+        self.assertFalse(os.path.exists(self.full_path))
+
+    def test_purge_nothing_to_purge(self):
+        mpm_uninstall(self.db, self.name)
+        self.assertIsNone(mpm_purge(self.db))
+        self.assertFalse(os.path.exists(self.full_path))
 
 class TestShow(unittest.TestCase):
     def setUp(self):

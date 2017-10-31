@@ -188,11 +188,9 @@ def mpm_purge(db):
             click.echo('Purging all modules...')
             for item in mpm_db.all():
                 mpm_uninstall(db, item['name'])
+            click.echo('Purging complete!')
         else:
             click.echo('Nothing to purge!')
-            return
-
-        click.echo('Purging complete!')
 
 def mpm_convert(db, filename, product, hard):
     """
