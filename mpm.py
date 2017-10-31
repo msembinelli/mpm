@@ -144,12 +144,10 @@ def mpm_load(db, filename, product):
                     name = item['name']
                     directory = yaml_to_path_helper(item['path']).split(os.path.sep)[-2]
                     mpm_install(db, item['remote_url'], item['reference'], directory, name)
+                click.echo('Load complete!')
             else:
                 load_db.purge_table(product)
                 click.echo('Nothing to load!')
-                return
-
-            click.echo('Load complete!')
     else:
         click.echo('File not found!')
 
@@ -172,11 +170,10 @@ def mpm_freeze(db, filename, product):
                 for item in mpm_db.all():
                     if item not in save_db.table(product):
                         save_db.table(product).insert(item)
+            click.echo('Freeze complete!')
         else:
             click.echo('Nothing to freeze!')
-            return
-
-        click.echo('Freeze complete!')
+            os.remove(filename)
 
 def mpm_purge(db):
     """

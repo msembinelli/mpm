@@ -3,7 +3,7 @@ import os
 import shutil
 import stat
 
-from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_purge, mpm_convert, mpm_show
+from mpm import MPMMetadata, mpm_init, mpm_purge, mpm_install, mpm_uninstall, mpm_update, mpm_load, mpm_freeze, mpm_convert, mpm_show
 from mpm_helpers import clone_and_checkout_helper, clone_helper, checkout_helper, yaml_to_path_helper, path_to_yaml_helper, onerror_helper, remove_from_gitignore_helper, add_to_gitignore_helper, is_local_commit_helper, with_open_or_create_tinydb_helper, with_open_or_create_file_helper, create_directory_helper
 from mpm_yaml_storage import YAMLStorage
 from tinydb import TinyDB, Query
@@ -528,6 +528,30 @@ class TestPurge(unittest.TestCase):
         mpm_uninstall(self.db, self.name)
         self.assertIsNone(mpm_purge(self.db))
         self.assertFalse(os.path.exists(self.full_path))
+
+class TestFreeze(unittest.TestCase):
+    def setUp(self):
+        self.context = HelperObject()
+        self.db = mpm_init(self.context)
+        self.remote_url = 'https://github.com/msembinelli/q2.git'
+        self.reference = 'remotes/origin/master'
+        self.directory = 'modules'
+        self.name = 'q2'
+        self.full_path = os.path.join(self.directory, self.name)
+
+    def tearDown(self):
+        pass
+
+    def test_freeze(self):
+        mpm_install(self.db, self.remote_url, self.reference, self.directory, None)
+        self.assertIsNone(mpm_freeze(self.db, 'package-test.yaml', 'test'))
+        self.assertTrue(os.path.isfile('package-test.yaml'))
+        mpm_uninstall(self.db, self.name)
+        os.remove('package-test.yaml')
+
+    def test_freeze_nothing_to_freeze(self):
+        self.assertIsNone(mpm_freeze(self.db, 'package-test.yaml', 'test'))
+        self.assertFalse(os.path.isfile('package-test.yaml'))
 
 class TestShow(unittest.TestCase):
     def setUp(self):
